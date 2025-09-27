@@ -26,6 +26,21 @@ export interface AssetNode {
       name: string;
     };
   };
+  freshnessStatusInfo?: {
+    freshnessStatus: FreshnessStatus;
+    freshnessStatusMetadata?: {
+      lastMaterializedTimestamp?: string;
+    };
+  };
+  assetChecks?: AssetCheck[];
+}
+
+export enum FreshnessStatus {
+  HEALTHY = 'HEALTHY',
+  WARNING = 'WARNING',
+  DEGRADED = 'DEGRADED',
+  UNKNOWN = 'UNKNOWN',
+  NOT_APPLICABLE = 'NOT_APPLICABLE'
 }
 
 export interface AssetHealth {
@@ -101,6 +116,17 @@ export interface AssetCheckExecution {
   id: string;
   runId: string;
   status: AssetCheckExecutionStatus;
+  timestamp?: string;
+  evaluation?: {
+    checkName: string;
+    severity?: string;
+    success: boolean;
+    description?: string;
+    metadataEntries?: Array<{
+      label: string;
+      description?: string;
+    }>;
+  };
 }
 
 export enum AssetCheckExecutionStatus {

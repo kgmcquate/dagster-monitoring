@@ -47,6 +47,7 @@ export default function RecentMaterializationsChart({ assets }: RecentMaterializ
         <YAxis />
         <Tooltip />
         <Line 
+          key="materializations"
           type="monotone" 
           dataKey="materializations" 
           stroke="#0ea5e9" 

@@ -32,6 +32,20 @@ export interface AssetChecksResponse {
   } | null;
 }
 
+export interface AllAssetChecksResponse {
+  assetNodes: Array<{
+    id: string;
+    jobNames?: string[];
+    assetKey: {
+      path: string[];
+    };
+    hasAssetChecks: boolean;
+    assetChecksOrError?: {
+      checks: AssetCheck[];
+    };
+  }>;
+}
+
 export interface AssetEventHistoryResponse {
   assetOrError: {
     id: string;

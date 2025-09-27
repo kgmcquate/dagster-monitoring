@@ -1,6 +1,7 @@
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@apollo/client';
 import { GET_ASSET_MATERIALIZATIONS, GET_ASSET_OBSERVATIONS, GET_ASSET_CHECKS } from '../graphql/queries';
+import { getRunUrl } from '../utils/dagsterUrls';
 import LoadingSpinner from './LoadingSpinner';
 import ErrorMessage from './ErrorMessage';
 import { 
@@ -78,7 +79,17 @@ export default function AssetDetailView() {
               <div key={`${mat.runId}-${index}`} className="border-l-4 border-blue-400 pl-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-gray-900">Run: {mat.runId}</p>
+                    <p className="font-medium" style={{ color: 'var(--color-text-default)' }}>
+                      Run: <a 
+                        href={getRunUrl(mat.runId)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 underline hover:no-underline transition-colors"
+                        title={`View run ${mat.runId} in Dagster UI`}
+                      >
+                        {mat.runId.slice(0, 8)}...
+                      </a>
+                    </p>
                     <p className="text-sm text-gray-500">
                       {new Date(parseFloat(mat.timestamp)).toLocaleString()}
                     </p>
@@ -116,7 +127,17 @@ export default function AssetDetailView() {
               <div key={`${obs.runId}-${index}`} className="border-l-4 border-green-400 pl-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-gray-900">Run: {obs.runId}</p>
+                    <p className="font-medium" style={{ color: 'var(--color-text-default)' }}>
+                      Run: <a 
+                        href={getRunUrl(obs.runId)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 underline hover:no-underline transition-colors"
+                        title={`View run ${obs.runId} in Dagster UI`}
+                      >
+                        {obs.runId.slice(0, 8)}...
+                      </a>
+                    </p>
                     <p className="text-sm text-gray-500">
                       {new Date(parseFloat(obs.timestamp)).toLocaleString()}
                     </p>

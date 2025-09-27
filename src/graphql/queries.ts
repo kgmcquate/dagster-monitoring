@@ -192,6 +192,46 @@ export const GET_ASSET_EVENT_HISTORY = gql`
   }
 `;
 
+export const GET_ALL_ASSET_CHECKS = gql`
+  query GetAllAssetChecks($limit: Int = 100) {
+    assetNodes {
+      id
+      jobNames
+      assetKey {
+        path
+      }
+      hasAssetChecks
+      assetChecksOrError(limit: $limit) {
+        ... on AssetChecks {
+          checks {
+            name
+            blocking
+            assetKey {
+              path
+            }
+            executionForLatestMaterialization {
+              id
+              runId
+              status
+              evaluation {
+                checkName
+                severity
+                success
+                description
+                metadataEntries {
+                  label
+                  description
+                }
+              }
+              timestamp
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
 export const GET_DASHBOARD_STATS = gql`
   query GetDashboardStats {
     assetsOrError {
@@ -203,27 +243,49 @@ export const GET_DASHBOARD_STATS = gql`
           }
           definition {
             id
+            description
             groupName
+            assetKey {
+              path
+            }
             repository {
-              name
               location {
                 name
               }
             }
+            freshnessStatusInfo {
+              freshnessStatus
+              freshnessStatusMetadata {
+                lastMaterializedTimestamp
+              }
+            }
+            hasAssetChecks
           }
+          latestEventSortKey
           assetMaterializations(limit: 10) {
             runId
             timestamp
+            partition
+            metadataEntries {
+              label
+              description
+            }
             stepStats {
+              stepKey
               status
               startTime
               endTime
             }
           }
-          assetObservations(limit: 5) {
+          assetObservations(limit: 10) {
             runId
             timestamp
+            partition
             level
+            metadataEntries {
+              label
+              description
+            }
           }
         }
       }
@@ -234,29 +296,18 @@ export const GET_DASHBOARD_STATS = gql`
           id
           runId
           status
-          stats {
-            ... on RunStatsSnapshot {
-              startTime
-              endTime
-              stepsSucceeded
-              stepsFailed
-              materializations
-              expectations
-            }
-          }
           pipelineName
+          startTime
+          endTime
+          mode
           repositoryOrigin {
-            repositoryName
             repositoryLocationName
+            repositoryName
           }
           tags {
             key
             value
           }
-          creationTime
-          startTime
-          endTime
-          updateTime
         }
       }
     }

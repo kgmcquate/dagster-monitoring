@@ -2,6 +2,7 @@ import { useQuery } from '@apollo/client';
 import { GET_ASSETS_OVERVIEW } from '../graphql/queries';
 import { Asset } from '../types/dagster';
 import { AssetsOverviewResponse } from '../types/graphql';
+import { getRunUrl } from '../utils/dagsterUrls';
 import LoadingSpinner from './LoadingSpinner';
 import ErrorMessage from './ErrorMessage';
 
@@ -41,7 +42,7 @@ export default function MaterializationsView() {
             <thead>
               <tr>
                 <th>Asset</th>
-                <th>Run ID</th>
+                <th>Run</th>
                 <th>Timestamp</th>
                 <th>Status</th>
                 <th>Partition</th>
@@ -54,9 +55,15 @@ export default function MaterializationsView() {
                     {mat.assetPath}
                   </td>
                   <td>
-                    <code className="text-xs px-2 py-1 rounded" style={{ backgroundColor: 'var(--color-background-lighter)', color: 'var(--color-text-light)' }}>
-                      {mat.runId}
-                    </code>
+                    <a 
+                      href={getRunUrl(mat.runId)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:text-blue-300 underline hover:no-underline transition-colors text-xs"
+                      title={`View run ${mat.runId} in Dagster UI`}
+                    >
+                      {mat.runId.slice(0, 8)}...
+                    </a>
                   </td>
                   <td>
                     {new Date(parseFloat(mat.timestamp)).toLocaleString()}
