@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Asset } from '../types/dagster';
-import { getDateRangeDays, isWithinDateRange } from '../utils/dateUtils';
+import { Asset } from '../../types/dagster';
+import { getDateRangeDays, isWithinDateRange } from '../../utils/dateUtils';
 
 interface PerformanceMetricsChartProps {
   assets: Asset[];

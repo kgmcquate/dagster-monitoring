@@ -313,3 +313,15 @@ export const GET_DASHBOARD_STATS = gql`
     }
   }
 `;
+
+export const GET_ASSETS_LIVE_QUERY = gql`
+  query AssetGraphLiveQuery($assetKeys: [AssetKeyInput!]!) {
+    assetsLatestInfo(assetKeys: $assetKeys) {
+      id
+      assetKey {
+        path
+      }
+      inProgressRunIds
+    }
+  }
+`;

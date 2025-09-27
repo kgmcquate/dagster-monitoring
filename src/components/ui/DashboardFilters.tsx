@@ -1,5 +1,5 @@
 import React from 'react';
-import { Asset } from '../types/dagster';
+import { Asset } from '../../types/dagster';
 
 interface DashboardFiltersProps {
   assets: Asset[];

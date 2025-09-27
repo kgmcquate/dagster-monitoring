@@ -1,7 +1,7 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { JobRun, RunStatus } from '../types/dagster';
-import { getDateRangeDays, isWithinDateRange } from '../utils/dateUtils';
+import { JobRun, RunStatus } from '../../types/dagster';
+import { getDateRangeDays, isWithinDateRange } from '../../utils/dateUtils';
 
 interface JobRunsChartProps {
   runs: JobRun[];

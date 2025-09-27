@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Asset } from '../types/dagster';
-import { getDateRangeDays } from '../utils/dateUtils';
+import { Asset } from '../../types/dagster';
+import { getDateRangeDays } from '../../utils/dateUtils';
 
 interface SuccessFailureTrendsChartProps {
   assets: Asset[];

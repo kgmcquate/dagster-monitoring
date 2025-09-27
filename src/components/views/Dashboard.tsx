@@ -1,21 +1,19 @@
 import { useState } from 'react';
 import { useQuery } from '@apollo/client';
-import { GET_DASHBOARD_STATS } from '../graphql/queries';
-import { Asset, AssetHealthStatus, JobRun, RunStatus, FreshnessStatus, AssetCheck } from '../types/dagster';
-import { AssetsOverviewResponse } from '../types/graphql';
-import StatsCard from './StatsCard';
-import AssetHealthChart from './AssetHealthChart';
-import SuccessFailureTrendsChart from './SuccessFailureTrendsChart';
-import ObservationsActivityChart from './ObservationsActivityChart';
-import PerformanceMetricsChart from './PerformanceMetricsChart';
-import { JobRunsChart } from './JobRunsChart';
-import { JobPerformanceMetrics } from './JobPerformanceMetrics';
-import { CodeLocationCards } from './CodeLocationCards';
-import DashboardFilters from './DashboardFilters';
-import LoadingSpinner from './LoadingSpinner';
-import ErrorMessage from './ErrorMessage';
+import { GET_DASHBOARD_STATS } from '../../graphql/queries';
+import { Asset, AssetHealthStatus, JobRun, RunStatus, FreshnessStatus, AssetCheck } from '../../types/dagster';
+import { AssetsOverviewResponse } from '../../types/graphql';
+import { StatsCard, LoadingSpinner, ErrorMessage, DashboardFilters, CodeLocationCards } from '../ui';
+import { 
+  AssetHealthChart, 
+  SuccessFailureTrendsChart, 
+  ObservationsActivityChart, 
+  PerformanceMetricsChart,
+  JobRunsChart,
+  JobPerformanceMetrics
+} from '../charts';
 import AssetChecksOverview from './AssetChecksOverview';
-import { filterAssetsByDateRange, isWithinDateRange } from '../utils/dateUtils';
+import { filterAssetsByDateRange, isWithinDateRange } from '../../utils/dateUtils';
 
 function getAssetStatus(asset: Asset): AssetHealthStatus {
   // First check if we have Dagster's built-in freshness status
@@ -158,54 +156,6 @@ export default function Dashboard() {
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
           />
-        </div>
-        
-        <div className="lg:col-span-3">
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-7 gap-4 mb-6">
-            <StatsCard
-              title="Total Assets"
-              value={totalAssets}
-              subtitle="Filtered assets"
-              color="blue"
-            />
-            <StatsCard
-              title="Healthy"
-              value={healthyAssets}
-              subtitle="Fresh & up-to-date"
-              color="green"
-            />
-            <StatsCard
-              title="Job Runs"
-              value={totalJobRuns}
-              subtitle={`${runningJobRuns} running`}
-              color="blue"
-            />
-            <StatsCard
-              title="Successful"
-              value={successfulJobRuns}
-              subtitle="Job runs"
-              color="green"
-            />
-            <StatsCard
-              title="Failed"
-              value={failedJobRuns}
-              subtitle="Need attention"
-              color="red"
-            />
-            <StatsCard
-              title="Observations"
-              value={totalObservations}
-              subtitle={`${criticalObservations} critical`}
-              color="yellow"
-            />
-            <StatsCard
-              title="Asset Checks"
-              value={totalAssetChecks}
-              subtitle={`${failedChecks} failed`}
-              color="blue"
-            />
-          </div>
         </div>
       </div>
 

@@ -1,10 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@apollo/client';
-import { GET_ALL_ASSET_CHECKS } from '../graphql/queries';
-import { AllAssetChecksResponse } from '../types/graphql';
-import { Asset, AssetCheck, AssetCheckExecutionStatus } from '../types/dagster';
-import LoadingSpinner from './LoadingSpinner';
-import ErrorMessage from './ErrorMessage';
+import { GET_ALL_ASSET_CHECKS } from '../../graphql/queries';
+import { AllAssetChecksResponse } from '../../types/graphql';
+import { Asset, AssetCheck, AssetCheckExecutionStatus } from '../../types/dagster';
+import { LoadingSpinner, ErrorMessage } from '../ui';
 import { FunnelIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 type CheckFilter = 'all' | 'failed' | 'passed' | 'in-progress' | 'not-executed' | 'blocking' | 'freshness';

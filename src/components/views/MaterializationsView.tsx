@@ -1,10 +1,9 @@
 import { useQuery } from '@apollo/client';
-import { GET_ASSETS_OVERVIEW } from '../graphql/queries';
-import { Asset } from '../types/dagster';
-import { AssetsOverviewResponse } from '../types/graphql';
-import { getRunUrl } from '../utils/dagsterUrls';
-import LoadingSpinner from './LoadingSpinner';
-import ErrorMessage from './ErrorMessage';
+import { GET_ASSETS_OVERVIEW } from '../../graphql/queries';
+import { Asset } from '../../types/dagster';
+import { AssetsOverviewResponse } from '../../types/graphql';
+import { getRunUrl } from '../../utils/dagsterUrls';
+import { LoadingSpinner, ErrorMessage } from '../ui';
 
 export default function MaterializationsView() {
   const { loading, error, data } = useQuery<AssetsOverviewResponse>(GET_ASSETS_OVERVIEW, {

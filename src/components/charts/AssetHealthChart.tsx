@@ -1,5 +1,5 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import { Asset, AssetHealthStatus } from '../types/dagster';
+import { Asset, AssetHealthStatus } from '../../types/dagster';
 
 interface AssetHealthChartProps {
   healthy?: number;

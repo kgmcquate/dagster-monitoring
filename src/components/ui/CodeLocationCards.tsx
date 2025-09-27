@@ -1,5 +1,8 @@
 import React from 'react';
-import { Asset, JobRun, RunStatus, AssetHealthStatus, FreshnessStatus } from '../types/dagster';
+import { useQuery } from '@apollo/client';
+import { Asset, JobRun, RunStatus, AssetHealthStatus, FreshnessStatus } from '../../types/dagster';
+import { AssetsLiveResponse, AssetsLiveVariables } from '../../types/graphql';
+import { GET_ASSETS_LIVE_QUERY } from '../../graphql/queries';
 import { CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon, ClockIcon } from '@heroicons/react/24/outline';
 
 interface CodeLocationCardsProps {
@@ -15,6 +18,7 @@ interface CodeLocationStats {
   staleAssets: number;
   missingAssets: number;
   failedMaterializations: number;
+  runningAssets: number;
   totalJobRuns: number;
   successfulJobRuns: number;
   failedJobRuns: number;
@@ -34,19 +38,32 @@ function getAssetStatus(asset: Asset): AssetHealthStatus {
       case FreshnessStatus.DEGRADED:
         return AssetHealthStatus.STALE;
       case FreshnessStatus.UNKNOWN:
-        return AssetHealthStatus.MISSING;
       case FreshnessStatus.NOT_APPLICABLE:
-        return AssetHealthStatus.STALE; // Show as neutral/stale for not applicable
+        return AssetHealthStatus.MISSING; // Show as neutral/stale for not applicable
       default:
         return AssetHealthStatus.MISSING;
     }
   }
 
-  // For assets without freshness policies, show as NOT_APPLICABLE (stale color but different meaning)
-  return AssetHealthStatus.STALE;
+  // For assets without freshness policies, show as MISSING
+  return AssetHealthStatus.MISSING;
 }
 
 export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jobRuns }) => {
+  // Prepare asset keys for the live query
+  const assetKeys = React.useMemo(() => 
+    assets.map(asset => ({ path: asset.key.path })), 
+    [assets]
+  );
+
+  // Get live asset information including in-progress runs
+  const { data: liveData } = useQuery<AssetsLiveResponse, AssetsLiveVariables>(GET_ASSETS_LIVE_QUERY, {
+    variables: { assetKeys },
+    skip: assetKeys.length === 0,
+    pollInterval: 60000, // Poll every 60 seconds for updates
+    errorPolicy: 'ignore', // Don't break if this query fails
+  });
+
   // Group assets and job runs by code location
   const codeLocationStats = React.useMemo(() => {
     console.log('CodeLocationCards processing:', assets.length, 'assets,', jobRuns.length, 'job runs');
@@ -78,6 +95,7 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
           staleAssets: 0,
           missingAssets: 0,
           failedMaterializations: 0,
+          runningAssets: 0,
           totalJobRuns: 0,
           successfulJobRuns: 0,
           failedJobRuns: 0,
@@ -115,6 +133,35 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
       }
     });
 
+    // Calculate running assets using live data
+    if (liveData?.assetsLatestInfo) {
+      liveData.assetsLatestInfo.forEach(assetInfo => {
+        if (assetInfo.inProgressRunIds && assetInfo.inProgressRunIds.length > 0) {
+          // Find the corresponding asset to get its code location
+          const asset = assets.find(a => 
+            a.key.path.length === assetInfo.assetKey.path.length &&
+            a.key.path.every((segment, index) => segment === assetInfo.assetKey.path[index])
+          );
+          
+          if (asset) {
+            const codeLocation = (asset.definition?.repository?.location?.name || 'Unknown').trim();
+            let repositoryName = (asset.definition?.repository?.name || '__repository__').trim();
+            
+            if (repositoryName === 'Unknown' || !repositoryName) {
+              repositoryName = '__repository__';
+            }
+            
+            const key = `${codeLocation.toLowerCase()}::${repositoryName.toLowerCase()}`;
+            
+            if (statsMap.has(key)) {
+              const stats = statsMap.get(key)!;
+              stats.runningAssets++;
+            }
+          }
+        }
+      });
+    }
+
       // Process job runs with enhanced safety checks
       jobRuns.forEach((run, index) => {
         if (!run || typeof run !== 'object') {
@@ -144,22 +191,23 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
         // Normalize the key to match the asset processing
         const key = `${codeLocation.toLowerCase()}::${repositoryName.toLowerCase()}`;
         
-        console.log(`Job run ${run.id}: location="${codeLocation}", repo="${repositoryName}", key="${key}"`);
+        // console.log(`Job run ${run.id}: location="${codeLocation}", repo="${repositoryName}", key="${key}"`);
 
         if (!statsMap.has(key)) {
           statsMap.set(key, {
             name: codeLocation, // Use original case for display
             repositoryName,     // Use original case for display  
             totalAssets: 0,
-          healthyAssets: 0,
-          staleAssets: 0,
-          missingAssets: 0,
-          failedMaterializations: 0,
-          totalJobRuns: 0,
-          successfulJobRuns: 0,
-          failedJobRuns: 0,
-          runningJobRuns: 0,
-          recentActivity: 0
+            healthyAssets: 0,
+            staleAssets: 0,
+            missingAssets: 0,
+            failedMaterializations: 0,
+            runningAssets: 0,
+            totalJobRuns: 0,
+            successfulJobRuns: 0,
+            failedJobRuns: 0,
+            runningJobRuns: 0,
+            recentActivity: 0
         });
       }
 
@@ -183,7 +231,7 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
       console.error('Error processing code location stats:', error);
       return [];
     }
-  }, [assets, jobRuns]);
+  }, [assets, jobRuns, liveData]);
 
   if (codeLocationStats.length === 0) {
     return (
@@ -218,7 +266,7 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
             
             {/* Code location name */}
             <div className="pr-6 mb-4">
-              <h3 className="text-base font-semibold text-color-text-default truncate">
+              <h3 className="text-base font-semibold text-color-text-default ">
                 {stats.name}
               </h3>
             </div>
@@ -226,19 +274,12 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
             {/* Compact metrics */}
             <div className="space-y-3">
               {/* Assets row */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full" />
-                  <span 
-                    className="text-color-text-lighter font-medium" 
-                    title={`Total assets in ${stats.name}`}
-                  >
-                    {stats.totalAssets}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {stats.healthyAssets > 0 && (
-                    <>
+              <div>
+                <div className="text-xs text-color-text-lighter mb-1 font-medium">Assets</div>
+                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-1">
                       <CheckCircleIcon 
                         className="w-4 h-4 text-green-500" 
                         title="Healthy assets (materialized within 24 hours)"
@@ -249,10 +290,8 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
                       >
                         {stats.healthyAssets}
                       </span>
-                    </>
-                  )}
-                  {stats.failedMaterializations > 0 && (
-                    <>
+                    </div>
+                    <div className="flex items-center space-x-1">
                       <XCircleIcon 
                         className="w-4 h-4 text-red-500" 
                         title="Assets with failed latest materialization"
@@ -263,94 +302,91 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
                       >
                         {stats.failedMaterializations}
                       </span>
-                    </>
-                  )}
-                  {stats.staleAssets > 0 && (
-                    <>
+                    </div>
+                    <div className="flex items-center space-x-1">
                       <ClockIcon 
                         className="w-4 h-4 text-yellow-500" 
                         title="Stale/Warning assets or assets without freshness policies"
                       />
                       <span 
                         className="text-yellow-500 font-medium" 
-                        title={`${stats.staleAssets} assets that are stale according to their freshness policy, have warning/degraded status, or don't have freshness policies configured`}
+                        title={`${stats.staleAssets} assets that are stale according to their freshness policy`}
                       >
                         {stats.staleAssets}
                       </span>
-                    </>
-                  )}
-                  {stats.missingAssets > 0 && stats.failedMaterializations === 0 && (
-                    <>
-                      <XCircleIcon 
-                        className="w-4 h-4 text-gray-500" 
-                        title="Assets with no materializations"
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <ClockIcon 
+                        className={`w-4 h-4 text-blue-500 ${stats.runningAssets > 0 ? 'animate-pulse' : ''}`}
+                        title="Assets currently being materialized"
                       />
                       <span 
-                        className="text-gray-500 font-medium" 
-                        title={`${stats.missingAssets} assets that have never been materialized`}
+                        className={`text-blue-500 font-medium ${stats.runningAssets > 0 ? 'animate-pulse' : ''}`}
+                        title={`${stats.runningAssets} assets currently being materialized`}
                       >
-                        {stats.missingAssets}
+                        {stats.runningAssets}
                       </span>
-                    </>
-                  )}
+                    </div>
+                  </div>
                 </div>
               </div>
+              </div>
 
-              {/* Job runs row (if any) */}
-              {stats.totalJobRuns > 0 && (
-                <div className="flex items-center justify-between pt-3 border-t border-color-border">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-purple-500 rounded-full" />
-                    <span 
-                      className="text-color-text-lighter font-medium" 
-                      title={`Total job runs from ${stats.name} in recent history`}
-                    >
-                      {stats.totalJobRuns}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {stats.successfulJobRuns > 0 && (
+              {/* Job runs row */}
+              <div className="pt-3 border-t border-color-border">
+                <div className="text-xs text-color-text-lighter mb-1 font-medium">Job Runs</div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-1">
+                      <CheckCircleIcon 
+                        className="w-4 h-4 text-green-500" 
+                        title="Successful job runs"
+                      />
                       <span 
                         className="text-green-500 font-medium" 
                         title={`${stats.successfulJobRuns} job runs completed successfully`}
                       >
                         {stats.successfulJobRuns}
                       </span>
-                    )}
-                    {stats.failedJobRuns > 0 && (
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <XCircleIcon 
+                        className="w-4 h-4 text-red-500" 
+                        title="Failed job runs"
+                      />
                       <span 
                         className="text-red-500 font-medium" 
                         title={`${stats.failedJobRuns} job runs failed with errors`}
                       >
                         {stats.failedJobRuns}
                       </span>
-                    )}
-                    {stats.runningJobRuns > 0 && (
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <ClockIcon 
+                        className={`w-4 h-4 text-blue-500 ${stats.runningJobRuns > 0 ? 'animate-pulse' : ''}`}
+                        title="Running job runs"
+                      />
                       <span 
-                        className="text-blue-500 font-medium animate-pulse" 
+                        className={`text-blue-500 font-medium ${stats.runningJobRuns > 0 ? 'animate-pulse' : ''}`}
                         title={`${stats.runningJobRuns} job runs currently in progress`}
                       >
                         {stats.runningJobRuns}
                       </span>
-                    )}
+                    </div>
                   </div>
                 </div>
-              )}
-              
-              {/* Recent activity indicator */}
-              {stats.recentActivity > 0 && (
-                <div className="pt-2">
-                  <div className="text-sm text-color-text-lighter flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                    <span 
-                      className="font-medium" 
-                      title={`${stats.recentActivity} assets were updated in the last 24 hours`}
-                    >
-                      {stats.recentActivity} recent
-                    </span>
-                  </div>
+              </div>              {/* Recent activity indicator */}
+              <div className="pt-2">
+                <div className="text-sm text-color-text-lighter flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                  <span 
+                    className="font-medium" 
+                    title={`${stats.recentActivity} assets were updated in the last 24 hours`}
+                  >
+                    {stats.recentActivity} recent
+                  </span>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         );

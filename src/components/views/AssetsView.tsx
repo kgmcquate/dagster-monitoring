@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { useQuery } from '@apollo/client';
 import { Link } from 'react-router-dom';
-import { GET_ASSETS_OVERVIEW } from '../graphql/queries';
-import { Asset, AssetHealthStatus } from '../types/dagster';
-import { AssetsOverviewResponse } from '../types/graphql';
-import LoadingSpinner from './LoadingSpinner';
-import ErrorMessage from './ErrorMessage';
+import { GET_ASSETS_OVERVIEW } from '../../graphql/queries';
+import { Asset, AssetHealthStatus } from '../../types/dagster';
+import { AssetsOverviewResponse } from '../../types/graphql';
+import { LoadingSpinner, ErrorMessage } from '../ui';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 function getStatusBadgeClass(status: AssetHealthStatus): string {

@@ -1,13 +1,15 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ApolloProvider } from '@apollo/client';
 import { apolloClient } from './graphql/client';
-import Layout from './components/Layout';
-import Dashboard from './components/Dashboard';
-import AssetsView from './components/AssetsView';
-import AssetDetailView from './components/AssetDetailView';
-import MaterializationsView from './components/MaterializationsView';
-import ObservationsView from './components/ObservationsView';
-import ChecksView from './components/ChecksView';
+import { 
+  Layout,
+  Dashboard, 
+  AssetsView, 
+  AssetDetailView, 
+  MaterializationsView, 
+  ObservationsView, 
+  ChecksView 
+} from './components';
 import './index.css';
 
 function App() {

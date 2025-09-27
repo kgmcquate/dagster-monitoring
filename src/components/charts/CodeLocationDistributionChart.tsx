@@ -1,6 +1,6 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Asset } from '../types/dagster';
+import { Asset } from '../../types/dagster';
 
 interface CodeLocationDistributionChartProps {
   assets: Asset[];

@@ -1,7 +1,7 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, Cell } from 'recharts';
-import { JobRun, RunStatus } from '../types/dagster';
-import { getDateRangeDays, isWithinDateRange } from '../utils/dateUtils';
+import { JobRun, RunStatus } from '../../types/dagster';
+import { getDateRangeDays, isWithinDateRange } from '../../utils/dateUtils';
 
 interface JobPerformanceMetricsProps {
   runs: JobRun[];

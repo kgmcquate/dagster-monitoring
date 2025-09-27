@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Asset, LogLevel } from '../types/dagster';
-import { getDateRangeDays } from '../utils/dateUtils';
+import { Asset, LogLevel } from '../../types/dagster';
+import { getDateRangeDays } from '../../utils/dateUtils';
 
 interface ObservationsActivityChartProps {
   assets: Asset[];

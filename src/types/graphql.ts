@@ -85,3 +85,19 @@ export interface AssetEventHistoryVariables {
   limit?: number;
   eventTypeSelectors: string[];
 }
+
+export interface AssetLatestInfo {
+  id: string;
+  assetKey: {
+    path: string[];
+  };
+  inProgressRunIds: string[];
+}
+
+export interface AssetsLiveResponse {
+  assetsLatestInfo: AssetLatestInfo[];
+}
+
+export interface AssetsLiveVariables {
+  assetKeys: AssetKeyInput[];
+}

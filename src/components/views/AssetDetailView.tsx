@@ -1,9 +1,8 @@
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@apollo/client';
-import { GET_ASSET_MATERIALIZATIONS, GET_ASSET_OBSERVATIONS, GET_ASSET_CHECKS } from '../graphql/queries';
-import { getRunUrl } from '../utils/dagsterUrls';
-import LoadingSpinner from './LoadingSpinner';
-import ErrorMessage from './ErrorMessage';
+import { GET_ASSET_MATERIALIZATIONS, GET_ASSET_OBSERVATIONS, GET_ASSET_CHECKS } from '../../graphql/queries';
+import { getRunUrl } from '../../utils/dagsterUrls';
+import { LoadingSpinner, ErrorMessage } from '../ui';
 import { 
   AssetMaterializationsResponse, 
   AssetObservationsResponse, 
@@ -11,7 +10,7 @@ import {
   AssetMaterializationsVariables,
   AssetObservationsVariables,
   AssetChecksVariables
-} from '../types/graphql';
+} from '../../types/graphql';
 
 export default function AssetDetailView() {
   const { assetPath } = useParams<{ assetPath: string }>();
