@@ -1,3 +1,5 @@
+import { Asset } from '../types/dagster';
+
 export function getDateRangeDays(dateRange: string): number {
   switch (dateRange) {
     case '1d': return 1;
@@ -17,15 +19,15 @@ export function isWithinDateRange(timestamp: string | number, dateRange: string)
   return eventDate >= cutoffDate;
 }
 
-export function filterAssetsByDateRange(assets: any[], dateRange: string): any[] {
+export function filterAssetsByDateRange(assets: Asset[], dateRange: string): Asset[] {
   return assets.filter(asset => {
     // Check if any materialization is within the date range
-    const hasRecentMaterialization = asset.assetMaterializations?.some((mat: any) => 
+    const hasRecentMaterialization = asset.assetMaterializations?.some(mat => 
       isWithinDateRange(mat.timestamp, dateRange)
     );
     
     // Check if any observation is within the date range
-    const hasRecentObservation = asset.assetObservations?.some((obs: any) => 
+    const hasRecentObservation = asset.assetObservations?.some(obs => 
       isWithinDateRange(obs.timestamp, dateRange)
     );
     

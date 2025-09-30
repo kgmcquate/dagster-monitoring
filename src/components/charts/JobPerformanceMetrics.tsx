@@ -6,14 +6,12 @@ import { getDateRangeDays, isWithinDateRange } from '../../utils/dateUtils';
 interface JobPerformanceMetricsProps {
   runs: JobRun[];
   type?: 'duration-trend' | 'success-rate' | 'duration-scatter';
-  title?: string;
   dateRange?: string;
 }
 
 export const JobPerformanceMetrics: React.FC<JobPerformanceMetricsProps> = ({ 
   runs, 
   type = 'duration-trend',
-  title = 'Job Performance',
   dateRange = '7d'
 }) => {
   // Use the runs directly since they're already filtered by the Dashboard
@@ -24,16 +22,13 @@ export const JobPerformanceMetrics: React.FC<JobPerformanceMetricsProps> = ({
   // Handle empty state
   if (runs.length === 0) {
     return (
-      <div className="bg-color-background-default border border-color-border rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-color-text-default mb-4">{title}</h3>
-        <div className="flex items-center justify-center h-64 text-color-text-lighter">
-          <div className="text-center">
-            <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
-            <p className="text-sm">No job runs found for the selected time range</p>
-            <p className="text-xs mt-1">Try selecting a different date range or check if jobs are running</p>
-          </div>
+      <div className="flex items-center justify-center h-64 text-color-text-lighter">
+        <div className="text-center">
+          <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          </svg>
+          <p className="text-sm">No job runs found for the selected time range</p>
+          <p className="text-xs mt-1">Try selecting a different date range or check if jobs are running</p>
         </div>
       </div>
     );
@@ -63,43 +58,44 @@ export const JobPerformanceMetrics: React.FC<JobPerformanceMetricsProps> = ({
       .slice(-14); // Last 2 weeks
 
     return (
-      <div className="bg-color-background-default border border-color-border rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-color-text-default mb-4">{title}</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-            <XAxis 
-              dataKey="date" 
-              tick={{ fill: 'var(--color-text-lighter)', fontSize: 12 }}
-              axisLine={{ stroke: 'var(--color-border)' }}
-              tickFormatter={(value) => new Date(value).toLocaleDateString()}
-            />
-            <YAxis 
-              domain={[0, 100]}
-              tick={{ fill: 'var(--color-text-lighter)', fontSize: 12 }}
-              axisLine={{ stroke: 'var(--color-border)' }}
-              label={{ value: 'Success Rate (%)', angle: -90, position: 'insideLeft' }}
-            />
-            <Tooltip 
-              contentStyle={{
-                backgroundColor: 'var(--color-background-default)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '4px',
-                color: 'var(--color-text-default)'
-              }}
-              formatter={(value: number) => [`${value.toFixed(1)}%`, 'Success Rate']}
-              labelFormatter={(label) => `Date: ${new Date(label).toLocaleDateString()}`}
-            />
-            <Line 
-              key="successRate"
-              type="monotone" 
-              dataKey="successRate" 
-              stroke="#10b981" 
-              strokeWidth={2}
-              dot={{ fill: '#10b981', strokeWidth: 2 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+      <div className="flex">
+        <div className="flex-1">
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fill: 'var(--color-text-lighter)', fontSize: 12 }}
+                  axisLine={{ stroke: 'var(--color-border)' }}
+                  tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                />
+                <YAxis 
+                  domain={[0, 100]}
+                  tick={{ fill: 'var(--color-text-lighter)', fontSize: 12 }}
+                  axisLine={{ stroke: 'var(--color-border)' }}
+                  label={{ value: 'Success Rate (%)', angle: -90, position: 'insideLeft' }}
+                />
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: 'var(--color-background-default)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '4px',
+                    color: 'var(--color-text-default)'
+                  }}
+                  formatter={(value: number) => [`${value.toFixed(1)}%`, 'Success Rate']}
+                  labelFormatter={(label) => `Date: ${new Date(label).toLocaleDateString()}`}
+                />
+                <Line 
+                  key="successRate"
+                  type="linear" 
+                  dataKey="successRate" 
+                  stroke="#10b981" 
+                  strokeWidth={2}
+                  dot={{ fill: '#10b981', strokeWidth: 2 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+        </div>
       </div>
     );
   }
@@ -119,51 +115,52 @@ export const JobPerformanceMetrics: React.FC<JobPerformanceMetricsProps> = ({
     });
 
     return (
-      <div className="bg-color-background-default border border-color-border rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-color-text-default mb-4">{title}</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <ScatterChart data={scatterData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-            <XAxis 
-              type="number"
-              dataKey="x"
-              domain={['dataMin', 'dataMax']}
-              tick={{ fill: 'var(--color-text-lighter)', fontSize: 12 }}
-              axisLine={{ stroke: 'var(--color-border)' }}
-              tickFormatter={(value) => new Date(value).toLocaleDateString()}
-            />
-            <YAxis 
-              type="number"
-              dataKey="y"
-              tick={{ fill: 'var(--color-text-lighter)', fontSize: 12 }}
-              axisLine={{ stroke: 'var(--color-border)' }}
-              label={{ value: 'Duration (min)', angle: -90, position: 'insideLeft' }}
-            />
-            <Tooltip 
-              contentStyle={{
-                backgroundColor: 'var(--color-background-default)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '4px',
-                color: 'var(--color-text-default)'
-              }}
-              formatter={(value: number) => [
-                `${value.toFixed(1)} min`,
-                'Duration'
-              ]}
-              labelFormatter={(_, payload) => {
-                if (payload && payload[0]) {
-                  const data = payload[0].payload;
-                  return `Job: ${data.jobName} | Status: ${data.status}`;
-                }
-                return '';
-              }}
-            />
-            <Scatter 
-              dataKey="y" 
-              fill="#3b82f6"
-            />
-          </ScatterChart>
-        </ResponsiveContainer>
+      <div className="flex">
+        <div className="flex-1">
+          <ResponsiveContainer width="100%" height={300}>
+            <ScatterChart data={scatterData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis 
+                  type="number"
+                  dataKey="x"
+                  domain={['dataMin', 'dataMax']}
+                  tick={{ fill: 'var(--color-text-lighter)', fontSize: 12 }}
+                  axisLine={{ stroke: 'var(--color-border)' }}
+                  tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                />
+                <YAxis 
+                  type="number"
+                  dataKey="y"
+                  tick={{ fill: 'var(--color-text-lighter)', fontSize: 12 }}
+                  axisLine={{ stroke: 'var(--color-border)' }}
+                  label={{ value: 'Duration (min)', angle: -90, position: 'insideLeft' }}
+                />
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: 'var(--color-background-default)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '4px',
+                    color: 'var(--color-text-default)'
+                  }}
+                  formatter={(value: number) => [
+                    `${value.toFixed(1)} min`,
+                    'Duration'
+                  ]}
+                  labelFormatter={(_, payload) => {
+                    if (payload && payload[0]) {
+                      const data = payload[0].payload;
+                      return `Job: ${data.jobName} | Status: ${data.status}`;
+                    }
+                    return '';
+                  }}
+                />
+                <Scatter 
+                  dataKey="y" 
+                  fill="#3b82f6"
+                />
+              </ScatterChart>
+            </ResponsiveContainer>
+        </div>
       </div>
     );
   }
@@ -232,50 +229,51 @@ export const JobPerformanceMetrics: React.FC<JobPerformanceMetricsProps> = ({
   const trendData = generateDurationTrendData();
 
   return (
-    <div className="bg-color-background-default border border-color-border rounded-lg p-6">
-      <h3 className="text-lg font-semibold text-color-text-default mb-4">{title}</h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={trendData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-          <XAxis 
-            dataKey="timeLabel" 
-            tick={{ fill: 'var(--color-text-lighter)', fontSize: 12 }}
-            axisLine={{ stroke: 'var(--color-border)' }}
-          />
-          <YAxis 
-            tick={{ fill: 'var(--color-text-lighter)', fontSize: 12 }}
-            axisLine={{ stroke: 'var(--color-border)' }}
-            label={{ value: 'Duration (min)', angle: -90, position: 'insideLeft' }}
-          />
-          <Tooltip 
-            contentStyle={{
-              backgroundColor: 'var(--color-background-default)',
-              border: '1px solid var(--color-border)',
-              borderRadius: '4px',
-              color: 'var(--color-text-default)'
-            }}
-            formatter={(value: number) => [`${value.toFixed(1)} min`, 'Avg Duration']}
-            labelFormatter={(label) => `${groupByHour ? 'Hour' : 'Date'}: ${label}`}
-          />
-          <Line 
-            key="duration"
-            type="monotone" 
-            dataKey="duration" 
-            stroke="#3b82f6" 
-            strokeWidth={2}
-            dot={(props: any) => (
-              <circle 
-                cx={props.cx} 
-                cy={props.cy} 
-                r={3} 
-                fill={props.payload.status === RunStatus.SUCCESS ? '#10b981' : '#ef4444'}
-                stroke={props.payload.status === RunStatus.SUCCESS ? '#10b981' : '#ef4444'}
-                strokeWidth={2}
+    <div className="flex">
+      <div className="flex-1">
+        <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={trendData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis 
+                dataKey="timeLabel" 
+                tick={{ fill: 'var(--color-text-lighter)', fontSize: 12 }}
+                axisLine={{ stroke: 'var(--color-border)' }}
               />
-            )}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+              <YAxis 
+                tick={{ fill: 'var(--color-text-lighter)', fontSize: 12 }}
+                axisLine={{ stroke: 'var(--color-border)' }}
+                label={{ value: 'Duration (min)', angle: -90, position: 'insideLeft' }}
+              />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: 'var(--color-background-default)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '4px',
+                  color: 'var(--color-text-default)'
+                }}
+                formatter={(value: number) => [`${value.toFixed(1)} min`, 'Avg Duration']}
+                labelFormatter={(label) => `${groupByHour ? 'Hour' : 'Date'}: ${label}`}
+              />
+              <Line 
+                key="duration"
+                type="linear" 
+                dataKey="duration" 
+                stroke="#3b82f6" 
+                strokeWidth={2}
+                dot={(props: any) => (
+                  <circle 
+                    cx={props.cx} 
+                    cy={props.cy} 
+                    r={3} 
+                    fill={props.payload.status === RunStatus.SUCCESS ? '#10b981' : '#ef4444'}
+                    stroke={props.payload.status === RunStatus.SUCCESS ? '#10b981' : '#ef4444'}
+                    strokeWidth={2}
+                  />
+                )}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+      </div>
     </div>
   );
 };

@@ -48,7 +48,7 @@ export default function RecentMaterializationsChart({ assets }: RecentMaterializ
         <Tooltip />
         <Line 
           key="materializations"
-          type="monotone" 
+          type="linear" 
           dataKey="materializations" 
           stroke="#0ea5e9" 
           strokeWidth={2}

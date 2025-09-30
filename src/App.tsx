@@ -5,7 +5,6 @@ import {
   Layout,
   Dashboard, 
   AssetsView, 
-  AssetDetailView, 
   MaterializationsView, 
   ObservationsView, 
   ChecksView 
@@ -20,7 +19,6 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/assets" element={<AssetsView />} />
-            <Route path="/assets/:assetPath" element={<AssetDetailView />} />
             <Route path="/materializations" element={<MaterializationsView />} />
             <Route path="/observations" element={<ObservationsView />} />
             <Route path="/checks" element={<ChecksView />} />

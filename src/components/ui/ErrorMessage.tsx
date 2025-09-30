@@ -15,7 +15,7 @@ export default function ErrorMessage({ error }: ErrorMessageProps) {
     >
       <div className="flex">
         <div className="ml-3">
-          <h3 className="text-sm font-medium" style={{ color: 'var(--color-accent-red)' }}>
+          <h3 className="text-sm font-medium" style={{ color: 'var(--color-accent-error)' }}>
             Error loading data
           </h3>
           <div className="mt-2 text-sm" style={{ color: 'var(--color-text-light)' }}>

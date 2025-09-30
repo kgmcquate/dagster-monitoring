@@ -14,11 +14,11 @@
   --color-text-disabled: rgb(118, 130, 140);
   --color-border-default: rgb(48, 56, 61);
   --color-border-hover: rgb(94, 106, 99);
-  --color-accent-blue: rgb(79, 67, 221);
+  --color-accent-blue: rgb(76, 63, 217);
   --color-accent-blue-hover: rgb(114, 105, 228);
-  --color-accent-green: rgb(75, 180, 210);
-  --color-accent-yellow: rgb(234, 177, 89);
-  --color-accent-red: rgb(210, 66, 53);
+  --color-accent-success: rgb(49, 218, 114);
+  --color-accent-warn: rgb(238, 218, 41);
+  --color-accent-error: rgb(225, 59, 50);
   --color-keyline: rgba(155, 165, 173, 0.2);
 }
 

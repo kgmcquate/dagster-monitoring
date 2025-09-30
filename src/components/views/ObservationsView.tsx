@@ -37,50 +37,38 @@ export default function ObservationsView() {
 
       <div className="card">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y" style={{ borderColor: 'var(--color-border)' }}>
-            <thead style={{ backgroundColor: 'var(--color-background-light)' }}>
+          <table className="table">
+            <thead>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-text-lighter)' }}>
-                  Asset
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-text-lighter)' }}>
-                  Run
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-text-lighter)' }}>
-                  Timestamp
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-text-lighter)' }}>
-                  Level
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-text-lighter)' }}>
-                  Partition
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-text-lighter)' }}>
-                  Metadata
-                </th>
+                <th>Asset</th>
+                <th>Run</th>
+                <th>Timestamp</th>
+                <th>Level</th>
+                <th>Partition</th>
+                <th>Metadata</th>
               </tr>
             </thead>
-            <tbody className="divide-y" style={{ backgroundColor: 'var(--color-background-default)', borderColor: 'var(--color-border)' }}>
+            <tbody>
               {sortedObservations.slice(0, 100).map((obs, index) => (
-                <tr key={`${obs.runId}-${index}`} className="hover:bg-color-background-light transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: 'var(--color-text-default)' }}>
+                <tr key={`${obs.runId}-${index}`}>
+                  <td className="font-medium">
                     {obs.assetPath}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <td>
                     <a 
                       href={getRunUrl(obs.runId)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-400 hover:text-blue-300 underline hover:no-underline transition-colors"
+                      className="text-blue-400 hover:text-blue-300 underline hover:no-underline transition-colors text-xs"
                       title={`View run ${obs.runId} in Dagster UI`}
                     >
                       {obs.runId.slice(0, 8)}...
                     </a>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--color-text-lighter)' }}>
+                  <td>
                     {new Date(parseFloat(obs.timestamp)).toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td>
                     <span className={`status-badge ${
                       obs.level === 'ERROR' ? 'status-failure' : 
                       obs.level === 'WARNING' ? 'status-stale' : 'status-success'
@@ -88,10 +76,10 @@ export default function ObservationsView() {
                       {obs.level}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--color-text-lighter)' }}>
+                  <td>
                     {obs.partition || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: 'var(--color-text-lighter)' }}>
+                  <td>
                     {obs.metadataEntries?.length || 0} entries
                   </td>
                 </tr>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Asset } from '../../types/dagster';
 import { getDateRangeDays } from '../../utils/dateUtils';
+import { getCodeLocationColor } from '../../utils/codeLocationColors';
 
 interface SuccessFailureTrendsChartProps {
   assets: Asset[];
@@ -147,23 +148,14 @@ export default function SuccessFailureTrendsChart({ assets, groupByCodeLocation 
     assets.map(asset => asset.definition?.repository?.location?.name || 'Unknown')
   ));
 
-  // Color palette for different code locations
-  const colors = [
-    '#3b82f6', // blue
-    '#10b981', // emerald
-    '#f59e0b', // amber
-    '#ef4444', // red
-    '#8b5cf6', // violet
-    '#06b6d4', // cyan
-    '#84cc16', // lime
-    '#f97316'  // orange
-  ];
+  // Use centralized color function for consistent coloring
+  const getLocationColor = (location: string) => getCodeLocationColor(location);
 
   const renderLines = () => {
     if (groupByCodeLocation) {
       const lines: React.ReactElement[] = [];
-      codeLocations.forEach((location, index) => {
-        const baseColor = colors[index % colors.length];
+      codeLocations.forEach((location) => {
+        const baseColor = getLocationColor(location);
         const isDashed = location === 'Unknown';
         const successKey = `${location}_successes`;
         const failureKey = `${location}_failures`;
@@ -175,7 +167,7 @@ export default function SuccessFailureTrendsChart({ assets, groupByCodeLocation 
         lines.push(
           <Line
             key={successKey}
-            type="monotone"
+            type="linear"
             dataKey={successKey}
             stroke={baseColor}
             strokeWidth={isSuccessHovered ? 4 : 2}
@@ -194,7 +186,7 @@ export default function SuccessFailureTrendsChart({ assets, groupByCodeLocation 
         lines.push(
           <Line
             key={failureKey}
-            type="monotone"
+            type="linear"
             dataKey={failureKey}
             stroke={failureColor}
             strokeWidth={isFailureHovered ? 4 : 2}
@@ -217,25 +209,25 @@ export default function SuccessFailureTrendsChart({ assets, groupByCodeLocation 
       return (
         <>
           <Line 
-            type="monotone" 
+            type="linear" 
             dataKey="successes" 
-            stroke="var(--color-accent-green)" 
+            stroke="var(--color-accent-success)" 
             strokeWidth={isSuccessHovered ? 4 : 2}
             strokeOpacity={isSuccessDimmed ? 0.3 : 1}
             name="Successes"
-            dot={{ fill: 'var(--color-accent-green)', strokeWidth: 2, r: isSuccessHovered ? 6 : 4 }}
+            dot={{ fill: 'var(--color-accent-success)', strokeWidth: 2, r: isSuccessHovered ? 6 : 4 }}
           />
           <Line 
-            type="monotone" 
+            type="linear" 
             dataKey="failures" 
-            stroke="var(--color-accent-red)" 
+            stroke="var(--color-accent-error)" 
             strokeWidth={isFailureHovered ? 4 : 2}
             strokeOpacity={isFailureDimmed ? 0.3 : 1}
             name="Failures"
-            dot={{ fill: 'var(--color-accent-red)', stroke: '#ef4444', strokeWidth: 3, r: isFailureHovered ? 6 : 4 }}
+            dot={{ fill: 'var(--color-accent-error)', stroke: '#ef4444', strokeWidth: 3, r: isFailureHovered ? 6 : 4 }}
           />
           <Line 
-            type="monotone" 
+            type="linear" 
             dataKey="total" 
             stroke="var(--color-accent-blue)" 
             strokeWidth={isTotalHovered ? 4 : 2}
@@ -286,8 +278,8 @@ export default function SuccessFailureTrendsChart({ assets, groupByCodeLocation 
             if (groupByCodeLocation) {
               // For grouped view, only show code location specific entries
               const legendItems: React.ReactElement[] = [];
-              codeLocations.forEach((location, index) => {
-                const baseColor = colors[index % colors.length];
+              codeLocations.forEach((location) => {
+                const baseColor = getLocationColor(location);
                 
                 // Add success entry
                 legendItems.push(
@@ -343,7 +335,7 @@ export default function SuccessFailureTrendsChart({ assets, groupByCodeLocation 
                   <div className="relative">
                     <div 
                       className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: 'var(--color-accent-green)' }}
+                      style={{ backgroundColor: 'var(--color-accent-success)' }}
                     />
                   </div>
                   <span className="text-color-text-default text-xs leading-tight">Successes</span>
@@ -357,7 +349,7 @@ export default function SuccessFailureTrendsChart({ assets, groupByCodeLocation 
                   <div className="relative">
                     <div 
                       className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: 'var(--color-accent-red)' }}
+                      style={{ backgroundColor: 'var(--color-accent-error)' }}
                     />
                     <div 
                       className="absolute inset-0 w-3 h-3 rounded-full border-2" 

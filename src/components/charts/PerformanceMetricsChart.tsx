@@ -2,6 +2,7 @@ import React from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Asset } from '../../types/dagster';
 import { getDateRangeDays, isWithinDateRange } from '../../utils/dateUtils';
+import { getCodeLocationColor } from '../../utils/codeLocationColors';
 
 interface PerformanceMetricsChartProps {
   assets: Asset[];
@@ -93,17 +94,9 @@ export default function PerformanceMetricsChart({ assets, groupByCodeLocation = 
     );
   }
   
-  // Color mapping for different groups
+  // Use centralized color mapping for different groups
   const getGroupColor = (group: string) => {
-    const colors = [
-      'var(--color-accent-blue)',
-      'var(--color-accent-green)', 
-      'var(--color-accent-yellow)',
-      'var(--color-accent-red)',
-      'var(--color-text-light)'
-    ];
-    const hash = group.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-    return colors[hash % colors.length];
+    return getCodeLocationColor(group);
   };
 
   // Get unique code locations for legend when grouping

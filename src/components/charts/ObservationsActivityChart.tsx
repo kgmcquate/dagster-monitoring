@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Asset, LogLevel } from '../../types/dagster';
 import { getDateRangeDays } from '../../utils/dateUtils';
+import { getCodeLocationChartColors } from '../../utils/codeLocationColors';
 
 interface ObservationsActivityChartProps {
   assets: Asset[];
@@ -147,26 +148,15 @@ export default function ObservationsActivityChart({ assets, groupByCodeLocation 
     assets.map(asset => asset.definition?.repository?.location?.name || 'Unknown')
   ));
 
-  const getCodeLocationColor = (_location: string, index: number) => {
-    const colors = [
-      { fill: 'rgba(79, 67, 221, 0.3)', stroke: '#4f43dd' },   // Purple
-      { fill: 'rgba(16, 185, 129, 0.3)', stroke: '#10b981' },  // Green
-      { fill: 'rgba(59, 130, 246, 0.3)', stroke: '#3b82f6' },  // Blue
-      { fill: 'rgba(245, 158, 11, 0.3)', stroke: '#f59e0b' },  // Yellow
-      { fill: 'rgba(239, 68, 68, 0.3)', stroke: '#ef4444' },   // Red
-      { fill: 'rgba(139, 92, 246, 0.3)', stroke: '#8b5cf6' },  // Violet
-      { fill: 'rgba(34, 197, 94, 0.3)', stroke: '#22c55e' },   // Lime
-      { fill: 'rgba(168, 85, 247, 0.3)', stroke: '#a855f7' }   // Purple alt
-    ];
-    return colors[index % colors.length];
-  };
+  // Use centralized color function for consistent coloring
+  const getLocationColors = (location: string) => getCodeLocationChartColors(location);
 
   const areas: React.ReactElement[] = [];
 
   if (groupByCodeLocation) {
     // Render areas for each code location
-    uniqueCodeLocations.forEach((location, index) => {
-      const baseColor = getCodeLocationColor(location, index);
+    uniqueCodeLocations.forEach((location) => {
+      const baseColor = getLocationColors(location);
       const obsKey = `${location}_observations`;
       const warnKey = `${location}_warningObservations`;
       const critKey = `${location}_criticalObservations`;
@@ -183,7 +173,7 @@ export default function ObservationsActivityChart({ assets, groupByCodeLocation 
       areas.push(
         <Area
           key={obsKey}
-          type="monotone"
+          type="linear"
           dataKey={obsKey}
           stackId="1"
           stroke={baseColor.stroke}
@@ -199,7 +189,7 @@ export default function ObservationsActivityChart({ assets, groupByCodeLocation 
       areas.push(
         <Area
           key={warnKey}
-          type="monotone"
+          type="linear"
           dataKey={warnKey}
           stackId="2"
           stroke="#eab159"
@@ -215,7 +205,7 @@ export default function ObservationsActivityChart({ assets, groupByCodeLocation 
       areas.push(
         <Area
           key={critKey}
-          type="monotone"
+          type="linear"
           dataKey={critKey}
           stackId="3"
           stroke="#d24235"
@@ -240,7 +230,7 @@ export default function ObservationsActivityChart({ assets, groupByCodeLocation 
     areas.push(
       <Area
         key="observations"
-        type="monotone"
+        type="linear"
         dataKey="observations"
         stackId="1"
         stroke="#3b82f6"
@@ -254,7 +244,7 @@ export default function ObservationsActivityChart({ assets, groupByCodeLocation 
     areas.push(
       <Area
         key="warningObservations"
-        type="monotone"
+        type="linear"
         dataKey="warningObservations"
         stackId="2"
         stroke="#eab159"
@@ -268,7 +258,7 @@ export default function ObservationsActivityChart({ assets, groupByCodeLocation 
     areas.push(
       <Area
         key="criticalObservations"
-        type="monotone"
+        type="linear"
         dataKey="criticalObservations"
         stackId="3"
         stroke="#d24235"
@@ -314,8 +304,8 @@ export default function ObservationsActivityChart({ assets, groupByCodeLocation 
         {groupByCodeLocation ? (
           (() => {
             const legendItems: React.ReactElement[] = [];
-            uniqueCodeLocations.forEach((location, index) => {
-              const baseColor = getCodeLocationColor(location, index);
+            uniqueCodeLocations.forEach((location) => {
+              const baseColor = getLocationColors(location);
               const obsKey = `${location}_observations`;
               const warnKey = `${location}_warningObservations`;
               const critKey = `${location}_criticalObservations`;

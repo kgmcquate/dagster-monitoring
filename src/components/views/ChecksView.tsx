@@ -281,106 +281,88 @@ export default function ChecksView() {
           </div>
           
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-color-border">
-              <thead className="bg-color-background-lighter">
+            <table className="table">
+              <thead>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-color-text-lighter uppercase tracking-wider">
-                    Check Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-color-text-lighter uppercase tracking-wider">
-                    Asset
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-color-text-lighter uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-color-text-lighter uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-color-text-lighter uppercase tracking-wider">
-                    Jobs
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-color-text-lighter uppercase tracking-wider">
-                    Last Executed
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-color-text-lighter uppercase tracking-wider">
-                    Description
-                  </th>
+                  <th>Check Name</th>
+                  <th>Asset</th>
+                  <th>Status</th>
+                  <th>Type</th>
+                  <th>Jobs</th>
+                  <th>Last Executed</th>
+                  <th>Description</th>
                 </tr>
               </thead>
-              <tbody className="bg-color-background-default divide-y divide-color-border">
+              <tbody>
                 {filteredChecks.map((check, index) => {
                   const execution = check.executionForLatestMaterialization;
                   const severity = execution?.evaluation?.severity;
                   
                   return (
-                    <tr key={index} className="hover:bg-color-background-lighter">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-color-text-default">
+                    <tr key={index}>
+                      <td className="font-medium">
                         <div className="flex items-center space-x-2">
                           <span>{check.name}</span>
                           {severity && (
-                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
-                              severity === 'ERROR' ? 'bg-red-100 text-red-800' :
-                              severity === 'WARN' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-blue-100 text-blue-800'
+                            <span className={`status-badge ${
+                              severity === 'ERROR' ? 'status-failure' :
+                              severity === 'WARN' ? 'status-stale' :
+                              'status-success'
                             }`}>
                               {severity}
                             </span>
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-color-text-default">
-                        <code className="text-xs bg-color-background-lighter px-2 py-1 rounded">
-                          {check.assetPath}
-                        </code>
+                      <td>
+                        {check.assetPath}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span 
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(check)}`}
-                        >
+                      <td>
+                        <span className={`status-badge ${
+                          execution?.evaluation?.success === false || execution?.status === 'FAILURE' ? 'status-failure' :
+                          execution?.evaluation?.success === true || execution?.status === 'SUCCESS' ? 'status-success' :
+                          execution?.status === 'IN_PROGRESS' ? 'status-stale' : 'status-missing'
+                        }`}>
                           {getStatusLabel(check)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-color-text-default">
-                        {check.blocking ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
-                            Blocking
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
-                            Non-blocking
-                          </span>
-                        )}
+                      <td>
+                        <span className={`status-badge ${
+                          check.blocking ? 'status-failure' : 'status-success'
+                        }`}>
+                          {check.blocking ? 'Blocking' : 'Non-blocking'}
+                        </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-color-text-default">
+                      <td>
                         {check.jobNames && check.jobNames.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {check.jobNames.map((jobName, jobIndex) => (
                               <span 
                                 key={jobIndex}
-                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                                className="status-badge status-success"
                               >
                                 {jobName}
                               </span>
                             ))}
                           </div>
                         ) : (
-                          <span className="text-color-text-lighter">N/A</span>
+                          <span>N/A</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-color-text-default">
+                      <td>
                         {execution?.timestamp ? (
-                          <div className="text-xs">
+                          <div>
                             <div>{new Date(parseInt(execution.timestamp) * 1000).toLocaleDateString()}</div>
-                            <div className="text-color-text-lighter">{new Date(parseInt(execution.timestamp) * 1000).toLocaleTimeString()}</div>
+                            <div className="text-xs opacity-75">{new Date(parseInt(execution.timestamp) * 1000).toLocaleTimeString()}</div>
                           </div>
                         ) : (
-                          <span className="text-color-text-lighter">Never</span>
+                          <span>Never</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-color-text-default max-w-xs">
+                      <td className="max-w-xs">
                         <div className="truncate" title={execution?.evaluation?.description || check.description || 'No description'}>
                           {execution?.evaluation?.description || check.description || (
-                            <span className="text-color-text-lighter italic">No description</span>
+                            <span className="italic opacity-75">No description</span>
                           )}
                         </div>
                       </td>

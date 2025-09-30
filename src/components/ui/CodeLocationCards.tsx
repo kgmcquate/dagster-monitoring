@@ -4,6 +4,7 @@ import { Asset, JobRun, RunStatus, AssetHealthStatus, FreshnessStatus } from '..
 import { AssetsLiveResponse, AssetsLiveVariables } from '../../types/graphql';
 import { GET_ASSETS_LIVE_QUERY } from '../../graphql/queries';
 import { CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { getCodeLocationColor } from '../../utils/codeLocationColors';
 
 interface CodeLocationCardsProps {
   assets: Asset[];
@@ -23,7 +24,6 @@ interface CodeLocationStats {
   successfulJobRuns: number;
   failedJobRuns: number;
   runningJobRuns: number;
-  recentActivity: number;
 }
 
 function getAssetStatus(asset: Asset): AssetHealthStatus {
@@ -99,8 +99,7 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
           totalJobRuns: 0,
           successfulJobRuns: 0,
           failedJobRuns: 0,
-          runningJobRuns: 0,
-          recentActivity: 0
+          runningJobRuns: 0
         });
       }
 
@@ -122,15 +121,7 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
         stats.failedMaterializations++;
       }
 
-      // Count recent activity (last 24 hours)
-      const lastMat = asset.assetMaterializations?.[0];
-      if (lastMat) {
-        const lastMatTime = new Date(parseFloat(lastMat.timestamp));
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        if (lastMatTime > oneDayAgo) {
-          stats.recentActivity++;
-        }
-      }
+
     });
 
     // Calculate running assets using live data
@@ -206,8 +197,7 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
             totalJobRuns: 0,
             successfulJobRuns: 0,
             failedJobRuns: 0,
-            runningJobRuns: 0,
-            recentActivity: 0
+            runningJobRuns: 0
         });
       }
 
@@ -253,20 +243,30 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
         return (
           <div 
             key={`${stats.name}::${stats.repositoryName}`}
-            className={`
-              relative bg-color-background-default border rounded-lg p-6 hover:border-color-border-hover transition-all duration-200 cursor-pointer
-              ${isUnhealthy ? 'border-red-500 bg-red-50/5' : hasIssues ? 'border-yellow-500 bg-yellow-50/5' : 'border-green-500 bg-green-50/5'}
-            `}
+            className="relative bg-color-background-default border rounded-lg p-6 hover:border-color-border-hover transition-all duration-200 cursor-pointer"
+            style={{
+              borderColor: isUnhealthy ? 'var(--color-accent-error)' : hasIssues ? 'var(--color-accent-warn)' : 'var(--color-accent-success)',
+              backgroundColor: isUnhealthy ? 'rgba(var(--color-accent-error-rgb), 0.02)' : hasIssues ? 'rgba(var(--color-accent-warn-rgb), 0.02)' : 'rgba(var(--color-accent-success-rgb), 0.02)',
+              borderLeft: `4px solid ${getCodeLocationColor(stats.name)}`
+            }}
             title={`${stats.name} - ${stats.totalAssets} assets, ${stats.healthyAssets} healthy, ${stats.failedMaterializations} failed`}
           >
             {/* Status indicator dot */}
-            <div className={`absolute top-3 right-3 w-2.5 h-2.5 rounded-full ${
-              isUnhealthy ? 'bg-red-500' : hasIssues ? 'bg-yellow-500' : 'bg-green-500'
-            } ${stats.runningJobRuns > 0 ? 'animate-pulse' : ''}`} />
+            <div 
+              className={`absolute top-3 right-3 w-2.5 h-2.5 rounded-full ${(stats.runningJobRuns > 0 || isUnhealthy) ? 'animate-pulse' : ''}`}
+              style={{
+                backgroundColor: isUnhealthy ? 'var(--color-accent-error)' : hasIssues ? 'var(--color-accent-warn)' : 'var(--color-accent-success)'
+              }}
+            />
             
-            {/* Code location name */}
-            <div className="pr-6 mb-4">
-              <h3 className="text-base font-semibold text-color-text-default ">
+            {/* Code location name with identifier color accent */}
+            <div className="pr-6 mb-4 flex items-center space-x-2">
+              {/* <div 
+                className="w-3 h-3 rounded-full flex-shrink-0" 
+                style={{ backgroundColor: getCodeLocationColor(stats.name) }}
+                title={`Code location: ${stats.name}`}
+              /> */}
+              <h3 className="text-base font-semibold text-color-text-default">
                 {stats.name}
               </h3>
             </div>
@@ -281,11 +281,13 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
                   <div className="flex items-center space-x-3">
                     <div className="flex items-center space-x-1">
                       <CheckCircleIcon 
-                        className="w-4 h-4 text-green-500" 
+                        className="w-4 h-4" 
+                        style={{ color: 'var(--color-accent-success)' }}
                         title="Healthy assets (materialized within 24 hours)"
                       />
                       <span 
-                        className="text-green-500 font-medium" 
+                        className="font-medium" 
+                        style={{ color: 'var(--color-accent-success)' }}
                         title={`${stats.healthyAssets} assets with successful materializations in the last 24 hours`}
                       >
                         {stats.healthyAssets}
@@ -293,11 +295,13 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
                     </div>
                     <div className="flex items-center space-x-1">
                       <XCircleIcon 
-                        className="w-4 h-4 text-red-500" 
+                        className="w-4 h-4" 
+                        style={{ color: 'var(--color-accent-error)' }}
                         title="Assets with failed latest materialization"
                       />
                       <span 
-                        className="text-red-500 font-medium" 
+                        className="font-medium" 
+                        style={{ color: 'var(--color-accent-error)' }}
                         title={`${stats.failedMaterializations} assets where the most recent materialization failed`}
                       >
                         {stats.failedMaterializations}
@@ -305,11 +309,13 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
                     </div>
                     <div className="flex items-center space-x-1">
                       <ClockIcon 
-                        className="w-4 h-4 text-yellow-500" 
+                        className="w-4 h-4" 
+                        style={{ color: 'var(--color-accent-warn)' }}
                         title="Stale/Warning assets or assets without freshness policies"
                       />
                       <span 
-                        className="text-yellow-500 font-medium" 
+                        className="font-medium" 
+                        style={{ color: 'var(--color-accent-warn)' }}
                         title={`${stats.staleAssets} assets that are stale according to their freshness policy`}
                       >
                         {stats.staleAssets}
@@ -317,11 +323,13 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
                     </div>
                     <div className="flex items-center space-x-1">
                       <ClockIcon 
-                        className={`w-4 h-4 text-blue-500 ${stats.runningAssets > 0 ? 'animate-pulse' : ''}`}
+                        className={`w-4 h-4 ${stats.runningAssets > 0 ? 'animate-pulse' : ''}`}
+                        style={{ color: 'var(--color-accent-blue)' }}
                         title="Assets currently being materialized"
                       />
                       <span 
-                        className={`text-blue-500 font-medium ${stats.runningAssets > 0 ? 'animate-pulse' : ''}`}
+                        className={`font-medium ${stats.runningAssets > 0 ? 'animate-pulse' : ''}`}
+                        style={{ color: 'var(--color-accent-blue)' }}
                         title={`${stats.runningAssets} assets currently being materialized`}
                       >
                         {stats.runningAssets}
@@ -339,11 +347,13 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
                   <div className="flex items-center space-x-3">
                     <div className="flex items-center space-x-1">
                       <CheckCircleIcon 
-                        className="w-4 h-4 text-green-500" 
+                        className="w-4 h-4" 
+                        style={{ color: 'var(--color-accent-success)' }}
                         title="Successful job runs"
                       />
                       <span 
-                        className="text-green-500 font-medium" 
+                        className="font-medium" 
+                        style={{ color: 'var(--color-accent-success)' }}
                         title={`${stats.successfulJobRuns} job runs completed successfully`}
                       >
                         {stats.successfulJobRuns}
@@ -351,11 +361,13 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
                     </div>
                     <div className="flex items-center space-x-1">
                       <XCircleIcon 
-                        className="w-4 h-4 text-red-500" 
+                        className="w-4 h-4" 
+                        style={{ color: 'var(--color-accent-error)' }}
                         title="Failed job runs"
                       />
                       <span 
-                        className="text-red-500 font-medium" 
+                        className="font-medium" 
+                        style={{ color: 'var(--color-accent-error)' }}
                         title={`${stats.failedJobRuns} job runs failed with errors`}
                       >
                         {stats.failedJobRuns}
@@ -363,28 +375,19 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
                     </div>
                     <div className="flex items-center space-x-1">
                       <ClockIcon 
-                        className={`w-4 h-4 text-blue-500 ${stats.runningJobRuns > 0 ? 'animate-pulse' : ''}`}
+                        className={`w-4 h-4 ${stats.runningJobRuns > 0 ? 'animate-pulse' : ''}`}
+                        style={{ color: 'var(--color-accent-blue)' }}
                         title="Running job runs"
                       />
                       <span 
-                        className={`text-blue-500 font-medium ${stats.runningJobRuns > 0 ? 'animate-pulse' : ''}`}
+                        className={`font-medium ${stats.runningJobRuns > 0 ? 'animate-pulse' : ''}`}
+                        style={{ color: 'var(--color-accent-blue)' }}
                         title={`${stats.runningJobRuns} job runs currently in progress`}
                       >
                         {stats.runningJobRuns}
                       </span>
                     </div>
                   </div>
-                </div>
-              </div>              {/* Recent activity indicator */}
-              <div className="pt-2">
-                <div className="text-sm text-color-text-lighter flex items-center space-x-1">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                  <span 
-                    className="font-medium" 
-                    title={`${stats.recentActivity} assets were updated in the last 24 hours`}
-                  >
-                    {stats.recentActivity} recent
-                  </span>
                 </div>
               </div>
             </div>

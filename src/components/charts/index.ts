@@ -7,3 +7,4 @@ export { JobPerformanceMetrics } from './JobPerformanceMetrics';
 export { default as CodeLocationDistributionChart } from './CodeLocationDistributionChart';
 export { default as RecentMaterializationsChart } from './RecentMaterializationsChart';
 export { ChartGroupingToggle } from './ChartGroupingToggle';
+export { default as AssetChecksChart } from './AssetChecksChart';

@@ -1,6 +1,7 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Asset } from '../../types/dagster';
+import { getColorByIndex } from '../../utils/codeLocationColors';
 
 interface CodeLocationDistributionChartProps {
   assets: Asset[];
@@ -79,7 +80,7 @@ export default function CodeLocationDistributionChart({ assets }: CodeLocationDi
   };
 
   const locationData = generateLocationData();
-  const colors = ['var(--color-accent-blue)', 'var(--color-accent-green)', 'var(--color-accent-yellow)', 'var(--color-accent-red)'];
+  // Using centralized color function for consistency
 
   return (
     <div className="h-80">
@@ -113,7 +114,7 @@ export default function CodeLocationDistributionChart({ assets }: CodeLocationDi
           />
           <Bar dataKey="total" name="total" radius={[4, 4, 0, 0]}>
             {locationData.map((_, index) => (
-              <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+              <Cell key={`cell-${index}`} fill={getColorByIndex(index)} />
             ))}
           </Bar>
         </BarChart>

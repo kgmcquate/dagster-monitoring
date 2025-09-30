@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useQuery } from '@apollo/client';
-import { Link } from 'react-router-dom';
 import { GET_ASSETS_OVERVIEW } from '../../graphql/queries';
 import { Asset, AssetHealthStatus } from '../../types/dagster';
 import { AssetsOverviewResponse } from '../../types/graphql';
 import { LoadingSpinner, ErrorMessage } from '../ui';
+import { getAssetUrl } from '../../utils/dagsterUrls';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 function getStatusBadgeClass(status: AssetHealthStatus): string {
@@ -103,14 +103,18 @@ export default function AssetsView() {
       {/* Assets Grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
         {filteredAssets.map((asset) => {
-          const assetPath = asset.key.path.join('/');
           const lastMaterialization = asset.assetMaterializations?.[0];
           
+          const handleAssetClick = () => {
+            const assetUrl = getAssetUrl(asset.key.path);
+            window.open(assetUrl, '_blank');
+          };
+          
           return (
-            <Link
+            <div
               key={asset.id}
-              to={`/assets/${encodeURIComponent(assetPath)}`}
-              className="card transition-all duration-200"
+              onClick={handleAssetClick}
+              className="card transition-all duration-200 cursor-pointer hover:shadow-lg"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
@@ -160,7 +164,7 @@ export default function AssetsView() {
                   )}
                 </div>
               </div>
-            </Link>
+            </div>
           );
         })}
       </div>
