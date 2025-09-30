@@ -3,7 +3,7 @@ import { useQuery } from '@apollo/client';
 import { GET_DASHBOARD_STATS } from '../../graphql/queries';
 import { Asset, AssetHealthStatus, JobRun, RunStatus, FreshnessStatus, AssetCheck } from '../../types/dagster';
 import { AssetsOverviewResponse } from '../../types/graphql';
-import { LoadingSpinner, ErrorMessage, DashboardControlsBar, CodeLocationCards } from '../ui';
+import { LoadingSpinner, ErrorMessage, DashboardControlsBar, CodeLocationCards, CollapsibleCard } from '../ui';
 import { 
   AssetHealthChart, 
   SuccessFailureTrendsChart, 
@@ -155,40 +155,30 @@ export default function Dashboard() {
       </div>
 
       {/* Success/Failure Trends - Full Width */}
-      <div className="card">
-        <div className="card-header">
-          <h3 style={{ color: 'var(--color-text-default)' }}>Asset Materialization Trends</h3>
-        </div>
+      <CollapsibleCard 
+        title="Asset Materialization Trends"
+      >
         <SuccessFailureTrendsChart assets={dateFilteredAssets} groupByCodeLocation={groupByCodeLocation} dateRange={dateRange} />
-      </div>
+      </CollapsibleCard>
 
       {/* Observations Activity - Full Width */}
-      <div className="card">
-        <div className="card-header">
-          <h3 style={{ color: 'var(--color-text-default)' }}>Observations Activity</h3>
-        </div>
+      <CollapsibleCard 
+        title="Observations Activity"
+      >
         <ObservationsActivityChart assets={dateFilteredAssets} groupByCodeLocation={groupByCodeLocation} dateRange={dateRange} />
-      </div>
+      </CollapsibleCard>
 
       {/* Performance Metrics - Full Width */}
-      <div className="card">
-        <div className="card-header">
-          <h3 style={{ color: 'var(--color-text-default)' }}>Performance Metrics</h3>
-          <p className="text-sm mt-1" style={{ color: 'var(--color-text-lighter)' }}>
-            Duration vs success rate by asset
-          </p>
-        </div>
+      <CollapsibleCard 
+        title="Performance Metrics"
+      >
         <PerformanceMetricsChart assets={dateFilteredAssets} groupByCodeLocation={groupByCodeLocation} dateRange={dateRange} />
-      </div>
+      </CollapsibleCard>
 
       {/* Asset Health Distribution - Full Width */}
-      <div className="card">
-        <div className="card-header">
-          <h3 style={{ color: 'var(--color-text-default)' }}>Asset Health Distribution</h3>
-          <p className="text-sm mt-1" style={{ color: 'var(--color-text-lighter)' }}>
-            Current health status breakdown
-          </p>
-        </div>
+      <CollapsibleCard 
+        title="Asset Health Distribution"
+      >
         <AssetHealthChart 
           healthy={healthyAssets}
           stale={staleAssets}
@@ -197,7 +187,7 @@ export default function Dashboard() {
           groupByCodeLocation={groupByCodeLocation}
           getAssetStatus={getAssetStatus}
         />
-      </div>
+      </CollapsibleCard>
 
       <hr/>
 
@@ -205,88 +195,60 @@ export default function Dashboard() {
         <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text-default)' }}>Job Runs Monitoring</h2>
       </div>
 
-      {/* Job Runs Timeline - Full Width */}
-      <div className="card">
-        <div className="card-header">
-          <h3 style={{ color: 'var(--color-text-default)' }}>Job Runs Timeline</h3>
-          <p className="text-sm mt-1" style={{ color: 'var(--color-text-lighter)' }}>
-            Timeline of successful and failed job executions
-          </p>
-        </div>
-        <JobRunsChart 
-          runs={dateFilteredJobRuns} 
-          type="timeline"
-          dateRange={dateRange}
-          groupByCodeLocation={groupByCodeLocation}
-        />
-      </div>
-
-      {/* Job Status Distribution - Full Width */}
-      <div className="card">
-        <div className="card-header">
-          <h3 style={{ color: 'var(--color-text-default)' }}>Job Status Distribution</h3>
-          <p className="text-sm mt-1" style={{ color: 'var(--color-text-lighter)' }}>
-            Breakdown of job run statuses by code location
-          </p>
-        </div>
-        <JobRunsChart 
-          runs={dateFilteredJobRuns} 
-          type="status-distribution"
-          dateRange={dateRange}
-          groupByCodeLocation={groupByCodeLocation}
-        />
-      </div>
-
-      {/* Job Duration Trends - Full Width */}
-      <div className="card">
-        <div className="card-header">
-          <h3 style={{ color: 'var(--color-text-default)' }}>Job Duration Trends</h3>
-          <p className="text-sm mt-1" style={{ color: 'var(--color-text-lighter)' }}>
-            Average execution duration trends over time
-          </p>
-        </div>
-        <JobPerformanceMetrics 
-          runs={dateFilteredJobRuns} 
-          type="duration-trend"
-          dateRange={dateRange}
-        />
-      </div>
-
-      {/* Job Success Rate - Full Width */}
-      <div className="card">
-        <div className="card-header">
-          <h3 style={{ color: 'var(--color-text-default)' }}>Job Success Rate Over Time</h3>
-          <p className="text-sm mt-1" style={{ color: 'var(--color-text-lighter)' }}>
-            Daily success rate trends for job executions
-          </p>
-        </div>
-        <JobPerformanceMetrics 
-          runs={dateFilteredJobRuns} 
-          type="success-rate"
-          dateRange={dateRange}
-        />
-      </div>
-
-      <hr/>
+        {/* Job Runs Timeline - Full Width */}
+        <CollapsibleCard 
+          title="Job Runs Timeline"
+        >
+          <JobRunsChart 
+            runs={dateFilteredJobRuns} 
+            type="timeline"
+            dateRange={dateRange}
+            groupByCodeLocation={groupByCodeLocation}
+          />
+        </CollapsibleCard>        {/* Job Status Distribution - Full Width */}
+        <CollapsibleCard 
+          title="Job Status Distribution"
+        >
+          <JobRunsChart 
+            runs={dateFilteredJobRuns} 
+            type="status-distribution"
+            dateRange={dateRange}
+            groupByCodeLocation={groupByCodeLocation}
+          />
+        </CollapsibleCard>        {/* Job Duration Trends - Full Width */}
+        <CollapsibleCard 
+          title="Job Duration Trends"
+        >
+          <JobPerformanceMetrics 
+            runs={dateFilteredJobRuns} 
+            type="duration-trend"
+            dateRange={dateRange}
+          />
+        </CollapsibleCard>        {/* Job Success Rate - Full Width */}
+        <CollapsibleCard 
+          title="Job Success Rate Over Time"
+        >
+          <JobPerformanceMetrics 
+            runs={dateFilteredJobRuns} 
+            type="success-rate"
+            dateRange={dateRange}
+          />
+        </CollapsibleCard>      <hr/>
 
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text-default)' }}>Asset Checks</h2>
       </div>
 
       {/* Asset Checks Timeline - Full Width */}
-      <div className="card">
-        <div className="card-header">
-          <h3 style={{ color: 'var(--color-text-default)' }}>Asset Checks Status Trends</h3>
-          <p className="text-sm mt-1" style={{ color: 'var(--color-text-lighter)' }}>
-            Timeline of asset check executions and their success/failure status
-          </p>
-        </div>
+      <CollapsibleCard 
+        title="Asset Checks Status Trends"
+      >
         <AssetChecksChart 
           assets={allAssets} 
           groupByCodeLocation={groupByCodeLocation} 
           dateRange={dateRange} 
         />
-      </div>
+      </CollapsibleCard>
     </div>
   );
 }
