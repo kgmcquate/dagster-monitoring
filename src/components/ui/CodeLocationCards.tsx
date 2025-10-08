@@ -73,7 +73,8 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
 
       // Process assets
       assets.forEach(asset => {
-        const codeLocation = (asset.definition?.repository?.location?.name || 'Unknown').trim();
+        let codeLocation = (asset.definition?.repository?.location?.name || 'Unknown').trim();
+        
         let repositoryName = (asset.definition?.repository?.name || '__repository__').trim();
         
         // Normalize repository name to match job runs format
@@ -166,11 +167,24 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
         
         if (run.repositoryOrigin && typeof run.repositoryOrigin === 'object') {
           codeLocation = (run.repositoryOrigin.repositoryLocationName || 'Unknown').trim();
+          
+          // Fix potential typo in the data
+          if (codeLocation.toLowerCase() === 'unkown') {
+            console.warn(`Correcting "Unkown" typo to "Unknown" for job run ${run.id}`);
+            codeLocation = 'Unknown';
+          }
           repositoryName = (run.repositoryOrigin.repositoryName || '__repository__').trim();
         } else {
           console.warn('Job run missing or invalid repositoryOrigin:', run);
           // Use pipeline name as fallback for grouping
           codeLocation = (run.pipelineName || 'Unknown').trim();
+          
+          // Fix potential typo in pipeline name fallback
+          if (codeLocation.toLowerCase() === 'unkown') {
+            console.warn(`Correcting "Unkown" typo to "Unknown" in pipeline name for job run ${run.id}`);
+            codeLocation = 'Unknown';
+          }
+          
           repositoryName = '__repository__';
         }
         
@@ -183,6 +197,11 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
         const key = `${codeLocation.toLowerCase()}::${repositoryName.toLowerCase()}`;
         
         // console.log(`Job run ${run.id}: location="${codeLocation}", repo="${repositoryName}", key="${key}"`);
+        
+        // Debug: Check for potential "Unkown" typo in job run data
+        if (codeLocation.toLowerCase().includes('unkown')) {
+          console.warn(`Found potential typo in job run code location name: "${codeLocation}" for run ${run.id}`);
+        }
 
         if (!statsMap.has(key)) {
           statsMap.set(key, {
@@ -235,6 +254,11 @@ export const CodeLocationCards: React.FC<CodeLocationCardsProps> = ({ assets, jo
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
       {codeLocationStats.map((stats) => {
+        // Debug: Check for typo in the final stats before rendering
+        if (stats.name.toLowerCase().includes('unkown')) {
+          console.error(`Found "Unkown" typo in final stats: "${stats.name}"`);
+        }
+        
         // Determine overall health status
         const isUnhealthy = stats.failedMaterializations > 0 || stats.failedJobRuns > 0;
         const hasIssues = stats.staleAssets > 0;

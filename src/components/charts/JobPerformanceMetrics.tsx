@@ -1,18 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, Cell } from 'recharts';
 import { JobRun, RunStatus } from '../../types/dagster';
 import { getDateRangeDays, isWithinDateRange } from '../../utils/dateUtils';
+import { getCodeLocationColor } from '../../utils/codeLocationColors';
 
 interface JobPerformanceMetricsProps {
   runs: JobRun[];
   type?: 'duration-trend' | 'success-rate' | 'duration-scatter';
   dateRange?: string;
+  groupByCodeLocation?: boolean;
 }
 
 export const JobPerformanceMetrics: React.FC<JobPerformanceMetricsProps> = ({ 
   runs, 
   type = 'duration-trend',
-  dateRange = '7d'
+  dateRange = '7d',
+  groupByCodeLocation = false
 }) => {
   // Use the runs directly since they're already filtered by the Dashboard
   const completedRuns = runs.filter(run => 
@@ -35,13 +38,35 @@ export const JobPerformanceMetrics: React.FC<JobPerformanceMetricsProps> = ({
   }
 
   if (type === 'success-rate') {
+    const [hoveredDataKey, setHoveredDataKey] = useState<string | null>(null);
+
+    // Get unique code locations
+    const codeLocations = Array.from(new Set(
+      completedRuns.map(run => run.repositoryOrigin?.repositoryLocationName || 'Unknown')
+    ));
+
     // Calculate success rate over time (daily)
     const dailyStats = completedRuns.reduce((acc, run) => {
       const date = new Date(parseInt(run.startTime!) * 1000);
       const dayKey = date.toISOString().split('T')[0];
+      const location = run.repositoryOrigin?.repositoryLocationName || 'Unknown';
       
       if (!acc[dayKey]) {
-        acc[dayKey] = { date: dayKey, successful: 0, total: 0, successRate: 0 };
+        acc[dayKey] = { 
+          date: dayKey, 
+          dateLabel: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          successful: 0, 
+          total: 0, 
+          successRate: 0 
+        };
+        
+        if (groupByCodeLocation) {
+          codeLocations.forEach(loc => {
+            acc[dayKey][`${loc}_successful`] = 0;
+            acc[dayKey][`${loc}_total`] = 0;
+            acc[dayKey][`${loc}_successRate`] = 0;
+          });
+        }
       }
       
       acc[dayKey].total++;
@@ -50,12 +75,76 @@ export const JobPerformanceMetrics: React.FC<JobPerformanceMetricsProps> = ({
       }
       acc[dayKey].successRate = (acc[dayKey].successful / acc[dayKey].total) * 100;
       
+      if (groupByCodeLocation) {
+        acc[dayKey][`${location}_total`]++;
+        if (run.status === RunStatus.SUCCESS) {
+          acc[dayKey][`${location}_successful`]++;
+        }
+        const locTotal = acc[dayKey][`${location}_total`];
+        const locSuccessful = acc[dayKey][`${location}_successful`];
+        acc[dayKey][`${location}_successRate`] = locTotal > 0 ? (locSuccessful / locTotal) * 100 : 0;
+      }
+      
       return acc;
     }, {} as Record<string, any>);
 
     const chartData = Object.values(dailyStats)
       .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .slice(-14); // Last 2 weeks
+
+    const renderLines = () => {
+      const lines: React.ReactElement[] = [];
+
+      if (groupByCodeLocation) {
+        codeLocations.forEach((location) => {
+          const dataKey = `${location}_successRate`;
+          const isHovered = hoveredDataKey === dataKey;
+          const isDimmed = hoveredDataKey && !isHovered;
+
+          lines.push(
+            <Line
+              key={dataKey}
+              type="linear"
+              dataKey={dataKey}
+              stroke={getCodeLocationColor(location)}
+              strokeWidth={isHovered ? 4 : 2}
+              strokeOpacity={isDimmed ? 0.3 : 1}
+              name={`${location} Success Rate`}
+              dot={{ 
+                fill: getCodeLocationColor(location), 
+                strokeWidth: 2, 
+                r: isHovered ? 5 : 3,
+                fillOpacity: isDimmed ? 0.3 : 1
+              }}
+              strokeDasharray={location === 'Unknown' ? '5 5' : undefined}
+            />
+          );
+        });
+      } else {
+        const isHovered = hoveredDataKey === 'successRate';
+        const isDimmed = hoveredDataKey && !isHovered;
+
+        lines.push(
+          <Line
+            key="successRate"
+            type="linear"
+            dataKey="successRate"
+            stroke="#10b981"
+            strokeWidth={isHovered ? 4 : 2}
+            strokeOpacity={isDimmed ? 0.3 : 1}
+            name="Success Rate"
+            dot={{ 
+              fill: '#10b981', 
+              strokeWidth: 2, 
+              r: isHovered ? 5 : 3,
+              fillOpacity: isDimmed ? 0.3 : 1
+            }}
+          />
+        );
+      }
+
+      return lines;
+    };
 
     return (
       <div className="flex">
@@ -64,10 +153,9 @@ export const JobPerformanceMetrics: React.FC<JobPerformanceMetricsProps> = ({
             <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis 
-                  dataKey="date" 
+                  dataKey="dateLabel" 
                   tick={{ fill: 'var(--color-text-lighter)', fontSize: 12 }}
                   axisLine={{ stroke: 'var(--color-border)' }}
-                  tickFormatter={(value) => new Date(value).toLocaleDateString()}
                 />
                 <YAxis 
                   domain={[0, 100]}
@@ -82,20 +170,37 @@ export const JobPerformanceMetrics: React.FC<JobPerformanceMetricsProps> = ({
                     borderRadius: '4px',
                     color: 'var(--color-text-default)'
                   }}
-                  formatter={(value: number) => [`${value.toFixed(1)}%`, 'Success Rate']}
-                  labelFormatter={(label) => `Date: ${new Date(label).toLocaleDateString()}`}
+                  formatter={(value: number, name: string) => [`${value.toFixed(1)}%`, name]}
+                  labelFormatter={(label) => `Date: ${label}`}
                 />
-                <Line 
-                  key="successRate"
-                  type="linear" 
-                  dataKey="successRate" 
-                  stroke="#10b981" 
-                  strokeWidth={2}
-                  dot={{ fill: '#10b981', strokeWidth: 2 }}
-                />
+                {renderLines()}
               </LineChart>
             </ResponsiveContainer>
         </div>
+        
+        {/* Legend */}
+        {groupByCodeLocation && (
+          <div className="ml-6 flex flex-col justify-center space-y-2">
+            <div className="text-xs font-medium text-color-text-light mb-2">Code Locations</div>
+            {codeLocations.map(location => {
+              const dataKey = `${location}_successRate`;
+              return (
+                <div 
+                  key={location} 
+                  className="flex items-center space-x-2 cursor-pointer hover:opacity-80"
+                  onMouseEnter={() => setHoveredDataKey(dataKey)}
+                  onMouseLeave={() => setHoveredDataKey(null)}
+                >
+                  <div 
+                    className="w-3 h-3 rounded-sm" 
+                    style={{ backgroundColor: getCodeLocationColor(location) }}
+                  />
+                  <span className="text-color-text-default text-xs leading-tight">{location}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   }
@@ -166,8 +271,14 @@ export const JobPerformanceMetrics: React.FC<JobPerformanceMetricsProps> = ({
   }
 
   // Default: duration trend - aggregate by time periods
+  const [hoveredDataKey, setHoveredDataKey] = useState<string | null>(null);
   const days = getDateRangeDays(dateRange);
   const groupByHour = days === 1;
+
+  // Get unique code locations
+  const codeLocations = Array.from(new Set(
+    completedRuns.map(run => run.repositoryOrigin?.repositoryLocationName || 'Unknown')
+  ));
   
   const generateDurationTrendData = () => {
     const trendData: any[] = [];
@@ -185,17 +296,41 @@ export const JobPerformanceMetrics: React.FC<JobPerformanceMetricsProps> = ({
           return runHour.getTime() === targetHour.getTime();
         });
         
+        const dataPoint: any = {
+          time: date.toISOString(),
+          timeLabel: date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          duration: 0,
+          runCount: hourlyRuns.length
+        };
+
+        if (groupByCodeLocation) {
+          codeLocations.forEach(location => {
+            dataPoint[`${location}_duration`] = 0;
+            dataPoint[`${location}_runCount`] = 0;
+          });
+        }
+        
         if (hourlyRuns.length > 0) {
           const avgDuration = hourlyRuns.reduce((sum, run) => 
             sum + ((parseInt(run.endTime!) - parseInt(run.startTime!)) / 60), 0) / hourlyRuns.length;
-          
-          trendData.push({
-            time: date.toISOString(),
-            duration: avgDuration,
-            runCount: hourlyRuns.length,
-            timeLabel: date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-          });
+          dataPoint.duration = avgDuration;
+
+          if (groupByCodeLocation) {
+            codeLocations.forEach(location => {
+              const locationRuns = hourlyRuns.filter(run => 
+                (run.repositoryOrigin?.repositoryLocationName || 'Unknown') === location
+              );
+              if (locationRuns.length > 0) {
+                const locationAvgDuration = locationRuns.reduce((sum, run) => 
+                  sum + ((parseInt(run.endTime!) - parseInt(run.startTime!)) / 60), 0) / locationRuns.length;
+                dataPoint[`${location}_duration`] = locationAvgDuration;
+                dataPoint[`${location}_runCount`] = locationRuns.length;
+              }
+            });
+          }
         }
+        
+        trendData.push(dataPoint);
       }
     } else {
       // Generate daily aggregations for longer ranges
@@ -209,17 +344,41 @@ export const JobPerformanceMetrics: React.FC<JobPerformanceMetricsProps> = ({
           return startTime.toISOString().split('T')[0] === dateStr;
         });
         
+        const dataPoint: any = {
+          time: date.toISOString(),
+          timeLabel: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          duration: 0,
+          runCount: dailyRuns.length
+        };
+
+        if (groupByCodeLocation) {
+          codeLocations.forEach(location => {
+            dataPoint[`${location}_duration`] = 0;
+            dataPoint[`${location}_runCount`] = 0;
+          });
+        }
+        
         if (dailyRuns.length > 0) {
           const avgDuration = dailyRuns.reduce((sum, run) => 
             sum + ((parseInt(run.endTime!) - parseInt(run.startTime!)) / 60), 0) / dailyRuns.length;
-          
-          trendData.push({
-            time: date.toISOString(),
-            duration: avgDuration,
-            runCount: dailyRuns.length,
-            timeLabel: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-          });
+          dataPoint.duration = avgDuration;
+
+          if (groupByCodeLocation) {
+            codeLocations.forEach(location => {
+              const locationRuns = dailyRuns.filter(run => 
+                (run.repositoryOrigin?.repositoryLocationName || 'Unknown') === location
+              );
+              if (locationRuns.length > 0) {
+                const locationAvgDuration = locationRuns.reduce((sum, run) => 
+                  sum + ((parseInt(run.endTime!) - parseInt(run.startTime!)) / 60), 0) / locationRuns.length;
+                dataPoint[`${location}_duration`] = locationAvgDuration;
+                dataPoint[`${location}_runCount`] = locationRuns.length;
+              }
+            });
+          }
         }
+        
+        trendData.push(dataPoint);
       }
     }
     
@@ -227,6 +386,60 @@ export const JobPerformanceMetrics: React.FC<JobPerformanceMetricsProps> = ({
   };
   
   const trendData = generateDurationTrendData();
+
+  const renderLines = () => {
+    const lines: React.ReactElement[] = [];
+
+    if (groupByCodeLocation) {
+      codeLocations.forEach((location) => {
+        const dataKey = `${location}_duration`;
+        const isHovered = hoveredDataKey === dataKey;
+        const isDimmed = hoveredDataKey && !isHovered;
+
+        lines.push(
+          <Line
+            key={dataKey}
+            type="linear"
+            dataKey={dataKey}
+            stroke={getCodeLocationColor(location)}
+            strokeWidth={isHovered ? 4 : 2}
+            strokeOpacity={isDimmed ? 0.3 : 1}
+            name={`${location} Avg Duration`}
+            dot={{ 
+              fill: getCodeLocationColor(location), 
+              strokeWidth: 2, 
+              r: isHovered ? 5 : 3,
+              fillOpacity: isDimmed ? 0.3 : 1
+            }}
+            strokeDasharray={location === 'Unknown' ? '5 5' : undefined}
+          />
+        );
+      });
+    } else {
+      const isHovered = hoveredDataKey === 'duration';
+      const isDimmed = hoveredDataKey && !isHovered;
+
+      lines.push(
+        <Line
+          key="duration"
+          type="linear"
+          dataKey="duration"
+          stroke="#3b82f6"
+          strokeWidth={isHovered ? 4 : 2}
+          strokeOpacity={isDimmed ? 0.3 : 1}
+          name="Avg Duration"
+          dot={{ 
+            fill: '#3b82f6', 
+            strokeWidth: 2, 
+            r: isHovered ? 5 : 3,
+            fillOpacity: isDimmed ? 0.3 : 1
+          }}
+        />
+      );
+    }
+
+    return lines;
+  };
 
   return (
     <div className="flex">
@@ -251,29 +464,37 @@ export const JobPerformanceMetrics: React.FC<JobPerformanceMetricsProps> = ({
                   borderRadius: '4px',
                   color: 'var(--color-text-default)'
                 }}
-                formatter={(value: number) => [`${value.toFixed(1)} min`, 'Avg Duration']}
+                formatter={(value: number, name: string) => [`${value.toFixed(1)} min`, name]}
                 labelFormatter={(label) => `${groupByHour ? 'Hour' : 'Date'}: ${label}`}
               />
-              <Line 
-                key="duration"
-                type="linear" 
-                dataKey="duration" 
-                stroke="#3b82f6" 
-                strokeWidth={2}
-                dot={(props: any) => (
-                  <circle 
-                    cx={props.cx} 
-                    cy={props.cy} 
-                    r={3} 
-                    fill={props.payload.status === RunStatus.SUCCESS ? '#10b981' : '#ef4444'}
-                    stroke={props.payload.status === RunStatus.SUCCESS ? '#10b981' : '#ef4444'}
-                    strokeWidth={2}
-                  />
-                )}
-              />
+              {renderLines()}
             </LineChart>
           </ResponsiveContainer>
       </div>
+      
+      {/* Legend */}
+      {groupByCodeLocation && (
+        <div className="ml-6 flex flex-col justify-center space-y-2">
+          <div className="text-xs font-medium text-color-text-light mb-2">Code Locations</div>
+          {codeLocations.map(location => {
+            const dataKey = `${location}_duration`;
+            return (
+              <div 
+                key={location} 
+                className="flex items-center space-x-2 cursor-pointer hover:opacity-80"
+                onMouseEnter={() => setHoveredDataKey(dataKey)}
+                onMouseLeave={() => setHoveredDataKey(null)}
+              >
+                <div 
+                  className="w-3 h-3 rounded-sm" 
+                  style={{ backgroundColor: getCodeLocationColor(location) }}
+                />
+                <span className="text-color-text-default text-xs leading-tight">{location}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

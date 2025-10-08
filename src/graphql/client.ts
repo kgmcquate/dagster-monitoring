@@ -1,8 +1,10 @@
 import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
+import { getRuntimeConfig } from '../utils/runtimeConfig';
 
 // Configure the GraphQL endpoint for your Dagster instance
+const config = getRuntimeConfig();
 const httpLink = createHttpLink({
-  uri: import.meta.env.VITE_DAGSTER_GRAPHQL_URL || 'http://localhost:3000/graphql',
+  uri: config.DAGSTER_GRAPHQL_URL,
 });
 
 export const apolloClient = new ApolloClient({

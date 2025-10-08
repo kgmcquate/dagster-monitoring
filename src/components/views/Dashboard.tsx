@@ -223,6 +223,7 @@ export default function Dashboard() {
             runs={dateFilteredJobRuns} 
             type="duration-trend"
             dateRange={dateRange}
+            groupByCodeLocation={groupByCodeLocation}
           />
         </CollapsibleCard>        {/* Job Success Rate - Full Width */}
         <CollapsibleCard 
@@ -232,6 +233,7 @@ export default function Dashboard() {
             runs={dateFilteredJobRuns} 
             type="success-rate"
             dateRange={dateRange}
+            groupByCodeLocation={groupByCodeLocation}
           />
         </CollapsibleCard>      <hr/>
 
@@ -244,7 +246,6 @@ export default function Dashboard() {
         title="Asset Checks Status Trends"
       >
         <AssetChecksChart 
-          assets={allAssets} 
           groupByCodeLocation={groupByCodeLocation} 
           dateRange={dateRange} 
         />

@@ -88,7 +88,10 @@ src/
 │   └── queries.ts       # GraphQL query definitions
 ├── types/               # TypeScript type definitions
 │   └── dagster.ts       # Dagster-specific types
-└── App.tsx              # Main application component
+├── App.tsx              # Main application component
+└── deployment/          # Deployment configurations
+    ├── docker/          # Docker build files
+    └── k8s/            # Kubernetes manifests
 ```
 
 ## Available Scripts
@@ -116,8 +119,20 @@ The project uses Tailwind CSS for styling. Key classes:
 
 ### Environment Variables
 
+The application supports both build-time and runtime configuration:
+
+#### Build-time Configuration (Development)
 - `VITE_DAGSTER_GRAPHQL_URL` - Dagster GraphQL endpoint
+- `VITE_DAGSTER_BASE_URL` - Dagster UI base URL  
 - `VITE_DAGSTER_AUTH_TOKEN` - Authentication token (if required)
+
+#### Runtime Configuration (Production/Docker)
+For production deployments, you can set environment variables at container runtime instead of build time:
+
+- `VITE_DAGSTER_GRAPHQL_URL` - Will be injected at runtime
+- `VITE_DAGSTER_BASE_URL` - Will be injected at runtime
+
+This allows the same Docker image to be used across different environments with different Dagster instances.
 
 ## Deployment
 
@@ -131,20 +146,65 @@ The `build` folder contains the production-ready application.
 
 ### Docker Deployment
 
-Create a `Dockerfile`:
+The project includes a complete Docker and Kubernetes deployment setup with runtime configuration support.
 
-```dockerfile
-FROM node:16-alpine as build
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-RUN npm run build
+#### Runtime Configuration
 
-FROM nginx:alpine
-COPY --from=build /app/build /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+The Docker container can be configured at runtime using environment variables, eliminating the need to rebuild the image for different environments:
+
+```bash
+# Run with custom Dagster instance
+docker run -p 8080:80 \
+  -e VITE_DAGSTER_GRAPHQL_URL="http://your-dagster:3000/graphql" \
+  -e VITE_DAGSTER_BASE_URL="http://your-dagster:3000" \
+  kgmcquate/dagster-monitoring:latest
+```
+
+#### Docker Compose Example
+
+```yaml
+version: '3.8'
+services:
+  dagster-monitoring:
+    image: kgmcquate/dagster-monitoring:latest
+    ports:
+      - "8080:80"
+    environment:
+      - VITE_DAGSTER_GRAPHQL_URL=http://dagster-webserver:3000/graphql
+      - VITE_DAGSTER_BASE_URL=http://dagster-webserver:3000
+```
+
+#### Automated Docker Hub Deployment
+
+The GitHub Action automatically builds and pushes Docker images to Docker Hub. To set this up:
+
+1. **Create Docker Hub account** and repository
+2. **Add GitHub Secrets** in your repository settings:
+   - `DOCKERHUB_USERNAME` - Your Docker Hub username
+   - `DOCKERHUB_TOKEN` - Docker Hub access token (create at https://hub.docker.com/settings/security)
+
+3. **Push to main branch** - Images will be automatically built and pushed to `kgmcquate/dagster-monitoring:latest`
+
+#### Manual Docker Build
+
+```bash
+# Build the image
+docker build -f deployment/docker/Dockerfile -t kgmcquate/dagster-monitoring .
+
+# Run locally
+docker run -p 8080:80 kgmcquate/dagster-monitoring
+
+# Test the deployment
+cd deployment/docker && ./test-docker.sh
+```
+
+#### Kubernetes Deployment
+
+See `deployment/k8s/README.md` for complete Kubernetes deployment instructions.
+
+```bash
+# Quick deployment
+kubectl apply -k deployment/k8s/
 ```
 
 ## Contributing

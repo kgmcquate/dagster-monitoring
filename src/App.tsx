@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ApolloProvider } from '@apollo/client';
 import { apolloClient } from './graphql/client';
+import { getRuntimeConfig } from './utils/runtimeConfig';
 import { 
   Layout,
   Dashboard, 
@@ -12,9 +13,12 @@ import {
 import './index.css';
 
 function App() {
+  const config = getRuntimeConfig();
+  const basePath = config.BASE_PATH || '';
+
   return (
     <ApolloProvider client={apolloClient}>
-      <Router>
+      <Router basename={basePath}>
         <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />

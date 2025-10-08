@@ -200,6 +200,11 @@ export const GET_ALL_ASSET_CHECKS = gql`
       assetKey {
         path
       }
+      repository {
+        location {
+          name
+        }
+      }
       hasAssetChecks
       assetChecksOrError(limit: $limit) {
         ... on AssetChecks {

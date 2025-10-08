@@ -39,6 +39,11 @@ export interface AllAssetChecksResponse {
     assetKey: {
       path: string[];
     };
+    repository?: {
+      location: {
+        name: string;
+      };
+    };
     hasAssetChecks: boolean;
     assetChecksOrError?: {
       checks: AssetCheck[];
