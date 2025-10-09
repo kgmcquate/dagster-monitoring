@@ -1,8 +1,8 @@
 import { gql } from '@apollo/client';
 
 export const GET_ASSETS_OVERVIEW = gql`
-  query GetAssetsOverview {
-    assetsOrError {
+  query GetAssetsOverview($limit: Int = 1000, $cursor: String) {
+    assetsOrError(limit: $limit, cursor: $cursor) {
       ... on AssetConnection {
         nodes {
           id
@@ -16,16 +16,25 @@ export const GET_ASSETS_OVERVIEW = gql`
             assetKey {
               path
             }
+            repository {
+              location {
+                name
+              }
+              name
+            }
+            freshnessStatusInfo {
+              freshnessStatus
+              freshnessStatusMetadata {
+                lastMaterializedTimestamp
+              }
+            }
           }
           latestEventSortKey
-          assetMaterializations(limit: 5) {
+          # Only get latest materialization for performance
+          assetMaterializations(limit: 1) {
             runId
             timestamp
             partition
-            metadataEntries {
-              label
-              description
-            }
             stepStats {
               stepKey
               status
@@ -33,15 +42,12 @@ export const GET_ASSETS_OVERVIEW = gql`
               endTime
             }
           }
-          assetObservations(limit: 5) {
+          # Only get latest observation for performance
+          assetObservations(limit: 1) {
             runId
             timestamp
             partition
             level
-            metadataEntries {
-              label
-              description
-            }
           }
         }
       }
@@ -86,7 +92,7 @@ export const GET_ASSET_MATERIALIZATIONS = gql`
 `;
 
 export const GET_ASSET_OBSERVATIONS = gql`
-  query GetAssetObservations($assetKey: AssetKeyInput!, $limit: Int = 100) {
+  query GetAssetObservations($assetKey: AssetKeyInput!, $limit: Int = 1000) {
     assetOrError(assetKey: $assetKey) {
       ... on Asset {
         id
@@ -144,7 +150,7 @@ export const GET_ASSET_CHECKS = gql`
 export const GET_ASSET_EVENT_HISTORY = gql`
   query GetAssetEventHistory(
     $assetKey: AssetKeyInput!
-    $limit: Int = 50
+    $limit: Int = 1000
     $eventTypeSelectors: [AssetEventHistoryEventTypeSelector!]!
   ) {
     assetOrError(assetKey: $assetKey) {
@@ -238,8 +244,8 @@ export const GET_ALL_ASSET_CHECKS = gql`
 `;
 
 export const GET_DASHBOARD_STATS = gql`
-  query GetDashboardStats {
-    assetsOrError {
+  query GetDashboardStats($limit: Int = 1000, $cursor: String) {
+    assetsOrError(limit: $limit, cursor: $cursor) {
       ... on AssetConnection {
         nodes {
           id
@@ -267,7 +273,7 @@ export const GET_DASHBOARD_STATS = gql`
             hasAssetChecks
           }
           latestEventSortKey
-          assetMaterializations(limit: 10) {
+          assetMaterializations(limit: $limit) {
             runId
             timestamp
             partition
@@ -282,7 +288,7 @@ export const GET_DASHBOARD_STATS = gql`
               endTime
             }
           }
-          assetObservations(limit: 10) {
+          assetObservations(limit: $limit) {
             runId
             timestamp
             partition
@@ -295,7 +301,7 @@ export const GET_DASHBOARD_STATS = gql`
         }
       }
     }
-    runsOrError(limit: 100) {
+    runsOrError(limit: $limit) {
       ... on Runs {
         results {
           id

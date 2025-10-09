@@ -1,20 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, useMemo } from 'react';
 import { useQuery } from '@apollo/client';
 import { GET_DASHBOARD_STATS } from '../../graphql/queries';
 import { Asset, AssetHealthStatus, JobRun, RunStatus, FreshnessStatus, AssetCheck } from '../../types/dagster';
 import { AssetsOverviewResponse } from '../../types/graphql';
-import { LoadingSpinner, ErrorMessage, DashboardControlsBar, CodeLocationCards, CollapsibleCard } from '../ui';
-import { 
-  AssetHealthChart, 
-  SuccessFailureTrendsChart, 
-  ObservationsActivityChart, 
-  PerformanceMetricsChart,
-  JobRunsChart,
-  JobPerformanceMetrics,
-  AssetChecksChart
-} from '../charts';
-import AssetChecksOverview from './AssetChecksOverview';
+import { LoadingSpinner, ErrorMessage, DashboardControlsBar, CodeLocationCards, CollapsibleCard, LazyChart } from '../ui';
 import { filterAssetsByDateRange, isWithinDateRange } from '../../utils/dateUtils';
+
+// Lazy load chart components
+const AssetHealthChart = lazy(() => import('../charts/AssetHealthChart'));
+const SuccessFailureTrendsChart = lazy(() => import('../charts/SuccessFailureTrendsChart'));
+const ObservationsActivityChart = lazy(() => import('../charts/ObservationsActivityChart'));
+const PerformanceMetricsChart = lazy(() => import('../charts/PerformanceMetricsChart'));
+const JobRunsChart = lazy(() => import('../charts/JobRunsChart').then(module => ({ default: module.JobRunsChart })));
+const JobPerformanceMetrics = lazy(() => import('../charts/JobPerformanceMetrics').then(module => ({ default: module.JobPerformanceMetrics })));
+const AssetChecksChart = lazy(() => import('../charts/AssetChecksChart'));
+const AssetChecksOverview = lazy(() => import('./AssetChecksOverview'));
 
 function getAssetStatus(asset: Asset): AssetHealthStatus {
   // First check if we have Dagster's built-in freshness status
@@ -51,6 +51,93 @@ export default function Dashboard() {
   // For now, provide empty array for asset checks to avoid blocking the dashboard
   const allAssetChecks: AssetCheck[] = [];
 
+  // Process data safely, even if loading or error state
+  const allAssets: Asset[] = data?.assetsOrError?.nodes || [];
+  const allJobRuns: JobRun[] = useMemo(() => {
+    try {
+      if (data?.runsOrError?.results && Array.isArray(data.runsOrError.results)) {
+        return data.runsOrError.results.filter(run => run && typeof run === 'object');
+      }
+    } catch (error) {
+      console.error('Error processing job runs data:', error);
+    }
+    return [];
+  }, [data]);
+
+  // Memoize expensive filtering operations
+  const dateFilteredJobRuns = useMemo(() => 
+    allJobRuns.filter(run => 
+      run.startTime && isWithinDateRange(parseFloat(run.startTime) * 1000, dateRange)
+    ), [allJobRuns, dateRange]
+  );
+  
+  const dateFilteredAssets = useMemo(() => 
+    filterAssetsByDateRange(allAssets, dateRange), 
+    [allAssets, dateRange]
+  );
+  
+  // Memoize expensive statistical calculations
+  const assetStats = useMemo(() => {
+    const totalAssets = dateFilteredAssets.length;
+    const healthyAssets = dateFilteredAssets.filter(asset => getAssetStatus(asset) === AssetHealthStatus.FRESH).length;
+    const staleAssets = dateFilteredAssets.filter(asset => getAssetStatus(asset) === AssetHealthStatus.STALE).length;
+    const missingAssets = dateFilteredAssets.filter(asset => getAssetStatus(asset) === AssetHealthStatus.MISSING).length;
+    
+    const recentMaterializations = dateFilteredAssets.filter(asset => {
+      const lastMat = asset.assetMaterializations?.[0];
+      if (!lastMat) return false;
+      const lastMatTime = new Date(parseFloat(lastMat.timestamp));
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      return lastMatTime > oneDayAgo;
+    }).length;
+
+    const failedMaterializations = dateFilteredAssets.filter(asset => {
+      const lastMat = asset.assetMaterializations?.[0];
+      return lastMat?.stepStats?.status === 'FAILURE';
+    }).length;
+
+    return {
+      totalAssets,
+      healthyAssets,
+      staleAssets,
+      missingAssets,
+      recentMaterializations,
+      failedMaterializations
+    };
+  }, [dateFilteredAssets]);
+
+  const observationStats = useMemo(() => {
+    const totalObservations = dateFilteredAssets.reduce((total, asset) => 
+      total + (asset.assetObservations?.length || 0), 0);
+    
+    const criticalObservations = dateFilteredAssets.reduce((total, asset) => 
+      total + (asset.assetObservations?.filter(obs => 
+        obs.level === 'CRITICAL' || obs.level === 'ERROR')?.length || 0), 0);
+
+    return { totalObservations, criticalObservations };
+  }, [dateFilteredAssets]);
+
+  const assetCheckStats = useMemo(() => {
+    const totalAssetChecks = allAssetChecks.length;
+    const passedChecks = allAssetChecks.filter(check => 
+      check.executionForLatestMaterialization?.status === 'SUCCESS').length;
+    const failedChecks = allAssetChecks.filter(check => 
+      check.executionForLatestMaterialization?.status === 'FAILURE').length;
+
+    return { totalAssetChecks, passedChecks, failedChecks };
+  }, [allAssetChecks]);
+
+  const jobRunStats = useMemo(() => {
+    const totalJobRuns = dateFilteredJobRuns.length;
+    const successfulJobRuns = dateFilteredJobRuns.filter(run => run.status === RunStatus.SUCCESS).length;
+    const failedJobRuns = dateFilteredJobRuns.filter(run => run.status === RunStatus.FAILURE).length;
+    const runningJobRuns = dateFilteredJobRuns.filter(run => 
+      [RunStatus.STARTED, RunStatus.STARTING, RunStatus.QUEUED].includes(run.status)).length;
+
+    return { totalJobRuns, successfulJobRuns, failedJobRuns, runningJobRuns };
+  }, [dateFilteredJobRuns]);
+
+  // Handle loading and error states after all hooks are called
   if (loading) return <LoadingSpinner />;
   if (error) {
     console.error('GraphQL Error:', error);
@@ -59,70 +146,10 @@ export default function Dashboard() {
 
   // Add safety checks for data structure
   console.log('Dashboard data:', data);
-  
-  const allAssets: Asset[] = data?.assetsOrError?.nodes || [];
-  // Safely extract job runs with additional validation
-  let allJobRuns: JobRun[] = [];
-  try {
-    if (data?.runsOrError?.results && Array.isArray(data.runsOrError.results)) {
-      allJobRuns = data.runsOrError.results.filter(run => run && typeof run === 'object');
-    }
-  } catch (error) {
-    console.error('Error processing job runs data:', error);
-    allJobRuns = [];
-  }
-
   console.log('Dashboard data loaded:', {
     assets: allAssets.length,
     jobRuns: allJobRuns.length
-  });  // Apply date range filtering to job runs
-  const dateFilteredJobRuns = allJobRuns.filter(run => 
-    run.startTime && isWithinDateRange(parseFloat(run.startTime) * 1000, dateRange)
-  );
-  
-  // Apply date range filtering to the assets
-  const dateFilteredAssets = filterAssetsByDateRange(allAssets, dateRange);
-  
-  // Calculate dashboard statistics for date filtered assets
-  const totalAssets = dateFilteredAssets.length;
-  const healthyAssets = dateFilteredAssets.filter(asset => getAssetStatus(asset) === AssetHealthStatus.FRESH).length;
-  const staleAssets = dateFilteredAssets.filter(asset => getAssetStatus(asset) === AssetHealthStatus.STALE).length;
-  const missingAssets = dateFilteredAssets.filter(asset => getAssetStatus(asset) === AssetHealthStatus.MISSING).length;
-  
-  const recentMaterializations = dateFilteredAssets.filter(asset => {
-    const lastMat = asset.assetMaterializations?.[0];
-    if (!lastMat) return false;
-    const lastMatTime = new Date(parseFloat(lastMat.timestamp));
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    return lastMatTime > oneDayAgo;
-  }).length;
-
-  const failedMaterializations = dateFilteredAssets.filter(asset => {
-    const lastMat = asset.assetMaterializations?.[0];
-    return lastMat?.stepStats?.status === 'FAILURE';
-  }).length;
-
-  // Calculate observations stats
-  const totalObservations = dateFilteredAssets.reduce((total, asset) => 
-    total + (asset.assetObservations?.length || 0), 0);
-  
-  const criticalObservations = dateFilteredAssets.reduce((total, asset) => 
-    total + (asset.assetObservations?.filter(obs => 
-      obs.level === 'CRITICAL' || obs.level === 'ERROR')?.length || 0), 0);
-
-  // Calculate asset checks stats
-  const totalAssetChecks = allAssetChecks.length;
-  const passedChecks = allAssetChecks.filter(check => 
-    check.executionForLatestMaterialization?.status === 'SUCCESS').length;
-  const failedChecks = allAssetChecks.filter(check => 
-    check.executionForLatestMaterialization?.status === 'FAILURE').length;
-
-  // Calculate job runs stats using date filtered runs
-  const totalJobRuns = dateFilteredJobRuns.length;
-  const successfulJobRuns = dateFilteredJobRuns.filter(run => run.status === RunStatus.SUCCESS).length;
-  const failedJobRuns = dateFilteredJobRuns.filter(run => run.status === RunStatus.FAILURE).length;
-  const runningJobRuns = dateFilteredJobRuns.filter(run => 
-    [RunStatus.STARTED, RunStatus.STARTING, RunStatus.QUEUED].includes(run.status)).length;
+  });
 
   return (
     <div className="space-y-8">
@@ -158,35 +185,43 @@ export default function Dashboard() {
       <CollapsibleCard 
         title="Asset Materialization Trends"
       >
-        <SuccessFailureTrendsChart assets={dateFilteredAssets} groupByCodeLocation={groupByCodeLocation} dateRange={dateRange} />
+        <LazyChart fallbackMessage="Loading materialization trends...">
+          <SuccessFailureTrendsChart assets={dateFilteredAssets} groupByCodeLocation={groupByCodeLocation} dateRange={dateRange} />
+        </LazyChart>
       </CollapsibleCard>
 
       {/* Observations Activity - Full Width */}
       <CollapsibleCard 
         title="Observations Activity"
       >
-        <ObservationsActivityChart assets={dateFilteredAssets} groupByCodeLocation={groupByCodeLocation} dateRange={dateRange} />
+        <LazyChart fallbackMessage="Loading observations activity...">
+          <ObservationsActivityChart assets={dateFilteredAssets} groupByCodeLocation={groupByCodeLocation} dateRange={dateRange} />
+        </LazyChart>
       </CollapsibleCard>
 
       {/* Performance Metrics - Full Width */}
       <CollapsibleCard 
         title="Performance Metrics"
       >
-        <PerformanceMetricsChart assets={dateFilteredAssets} groupByCodeLocation={groupByCodeLocation} dateRange={dateRange} />
+        <LazyChart fallbackMessage="Loading performance metrics...">
+          <PerformanceMetricsChart assets={dateFilteredAssets} groupByCodeLocation={groupByCodeLocation} dateRange={dateRange} />
+        </LazyChart>
       </CollapsibleCard>
 
       {/* Asset Health Distribution - Full Width */}
       <CollapsibleCard 
         title="Asset Health Distribution"
       >
-        <AssetHealthChart 
-          healthy={healthyAssets}
-          stale={staleAssets}
-          missing={missingAssets}
-          assets={dateFilteredAssets}
-          groupByCodeLocation={groupByCodeLocation}
-          getAssetStatus={getAssetStatus}
-        />
+        <LazyChart fallbackMessage="Loading asset health distribution...">
+          <AssetHealthChart 
+            healthy={assetStats.healthyAssets}
+            stale={assetStats.staleAssets}
+            missing={assetStats.missingAssets}
+            assets={dateFilteredAssets}
+            groupByCodeLocation={groupByCodeLocation}
+            getAssetStatus={getAssetStatus}
+          />
+        </LazyChart>
       </CollapsibleCard>
 
       <hr/>
@@ -199,42 +234,50 @@ export default function Dashboard() {
         <CollapsibleCard 
           title="Job Runs Timeline"
         >
-          <JobRunsChart 
-            runs={dateFilteredJobRuns} 
-            type="timeline"
-            dateRange={dateRange}
-            groupByCodeLocation={groupByCodeLocation}
-          />
+          <LazyChart fallbackMessage="Loading job runs timeline...">
+            <JobRunsChart 
+              runs={dateFilteredJobRuns} 
+              type="timeline"
+              dateRange={dateRange}
+              groupByCodeLocation={groupByCodeLocation}
+            />
+          </LazyChart>
         </CollapsibleCard>        {/* Job Status Distribution - Full Width */}
         <CollapsibleCard 
           title="Job Status Distribution"
         >
-          <JobRunsChart 
-            runs={dateFilteredJobRuns} 
-            type="status-distribution"
-            dateRange={dateRange}
-            groupByCodeLocation={groupByCodeLocation}
-          />
+          <LazyChart fallbackMessage="Loading job status distribution...">
+            <JobRunsChart 
+              runs={dateFilteredJobRuns} 
+              type="status-distribution"
+              dateRange={dateRange}
+              groupByCodeLocation={groupByCodeLocation}
+            />
+          </LazyChart>
         </CollapsibleCard>        {/* Job Duration Trends - Full Width */}
         <CollapsibleCard 
           title="Job Duration Trends"
         >
-          <JobPerformanceMetrics 
-            runs={dateFilteredJobRuns} 
-            type="duration-trend"
-            dateRange={dateRange}
-            groupByCodeLocation={groupByCodeLocation}
-          />
+          <LazyChart fallbackMessage="Loading job duration trends...">
+            <JobPerformanceMetrics 
+              runs={dateFilteredJobRuns} 
+              type="duration-trend"
+              dateRange={dateRange}
+              groupByCodeLocation={groupByCodeLocation}
+            />
+          </LazyChart>
         </CollapsibleCard>        {/* Job Success Rate - Full Width */}
         <CollapsibleCard 
           title="Job Success Rate Over Time"
         >
-          <JobPerformanceMetrics 
-            runs={dateFilteredJobRuns} 
-            type="success-rate"
-            dateRange={dateRange}
-            groupByCodeLocation={groupByCodeLocation}
-          />
+          <LazyChart fallbackMessage="Loading job success rate...">
+            <JobPerformanceMetrics 
+              runs={dateFilteredJobRuns} 
+              type="success-rate"
+              dateRange={dateRange}
+              groupByCodeLocation={groupByCodeLocation}
+            />
+          </LazyChart>
         </CollapsibleCard>      <hr/>
 
       <div className="flex justify-between items-center">
@@ -245,10 +288,12 @@ export default function Dashboard() {
       <CollapsibleCard 
         title="Asset Checks Status Trends"
       >
-        <AssetChecksChart 
-          groupByCodeLocation={groupByCodeLocation} 
-          dateRange={dateRange} 
-        />
+        <LazyChart fallbackMessage="Loading asset checks trends...">
+          <AssetChecksChart 
+            groupByCodeLocation={groupByCodeLocation} 
+            dateRange={dateRange} 
+          />
+        </LazyChart>
       </CollapsibleCard>
     </div>
   );

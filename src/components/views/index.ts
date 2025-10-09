@@ -3,4 +3,4 @@ export { default as AssetsView } from './AssetsView';
 export { default as ChecksView } from './ChecksView';
 export { default as MaterializationsView } from './MaterializationsView';
 export { default as ObservationsView } from './ObservationsView';
-export { default as AssetChecksOverview } from './AssetChecksOverview';
+// Note: AssetChecksOverview is lazy-loaded in Dashboard.tsx

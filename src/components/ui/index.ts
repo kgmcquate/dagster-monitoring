@@ -4,3 +4,7 @@ export { default as DashboardControlsBar } from './DashboardControlsBar';
 export { CodeLocationCards } from './CodeLocationCards';
 export { DAGIcon } from './DAGIcon';
 export { CollapsibleCard } from './CollapsibleCard';
+export { default as ChartLoadingSpinner } from './ChartLoadingSpinner';
+export { default as LazyChart } from './LazyChart';
+export { default as VirtualizedAssetGrid } from './VirtualizedAssetGrid';
+export { default as PerformanceStats } from './PerformanceStats';

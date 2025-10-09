@@ -4,7 +4,7 @@ import { apolloClient } from './graphql/client';
 import { getRuntimeConfig } from './utils/runtimeConfig';
 import { 
   Layout,
-  Dashboard, 
+  Dashboard,
   AssetsView, 
   MaterializationsView, 
   ObservationsView, 

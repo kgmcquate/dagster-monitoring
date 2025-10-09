@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback, memo, useEffect } from 'react';
 import { useQuery } from '@apollo/client';
 import { GET_ASSETS_OVERVIEW } from '../../graphql/queries';
 import { Asset, AssetHealthStatus } from '../../types/dagster';
 import { AssetsOverviewResponse } from '../../types/graphql';
-import { LoadingSpinner, ErrorMessage } from '../ui';
+import { LoadingSpinner, ErrorMessage, LazyChart, PerformanceStats } from '../ui';
+import { useDebounce } from '../../hooks';
 import { getAssetUrl } from '../../utils/dagsterUrls';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
@@ -41,6 +42,112 @@ function getAssetStatus(asset: Asset): AssetHealthStatus {
   }
 }
 
+// Memoized AssetCard component to prevent unnecessary re-renders
+const AssetCard = memo(({ asset }: { asset: Asset }) => {
+  const lastMaterialization = asset.assetMaterializations?.[0];
+  
+  const handleAssetClick = useCallback(() => {
+    const assetUrl = getAssetUrl(asset.key.path);
+    window.open(assetUrl, '_blank');
+  }, [asset.key.path]);
+  
+  const assetStatus = useMemo(() => getAssetStatus(asset), [asset]);
+  
+  return (
+    <div
+      onClick={handleAssetClick}
+      className="card transition-all duration-200 cursor-pointer hover:shadow-lg"
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-medium truncate" style={{ color: 'var(--color-text-default)' }}>
+            {asset.key.path.join('.')}
+          </h3>
+          {asset.definition?.description && (
+            <p className="mt-1 text-sm line-clamp-2" style={{ color: 'var(--color-text-lighter)' }}>
+              {asset.definition.description}
+            </p>
+          )}
+        </div>
+        
+        <div className="ml-4 flex-shrink-0">
+          <span className={getStatusBadgeClass(assetStatus)}>
+            {assetStatus}
+          </span>
+        </div>
+      </div>
+      
+      <div className="mt-4 flex items-center justify-between text-sm" style={{ color: 'var(--color-text-lighter)' }}>
+        <div>
+          {asset.definition?.groupName && (
+            <span 
+              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+              style={{ 
+                backgroundColor: 'var(--color-background-lighter)', 
+                color: 'var(--color-text-light)',
+                border: '1px solid var(--color-border-default)'
+              }}
+            >
+              {asset.definition.groupName}
+            </span>
+          )}
+        </div>
+        
+        <div>
+          {lastMaterialization ? (
+            <span>Last: {new Date(parseFloat(lastMaterialization.timestamp)).toLocaleDateString()}</span>
+          ) : (
+            <span>Never materialized</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// Simple AssetGrid component without hooks to avoid conditional hook issues
+const AssetGrid = memo(({ 
+  assets, 
+  onLoadMore, 
+  visibleCount, 
+  totalCount 
+}: { 
+  assets: Asset[]; 
+  onLoadMore: () => void;
+  visibleCount: number;
+  totalCount: number;
+}) => {
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+        {assets.map((asset) => (
+          <AssetCard key={asset.id} asset={asset} />
+        ))}
+      </div>
+      
+      {visibleCount < totalCount && (
+        <div className="text-center mt-8">
+          <button
+            onClick={onLoadMore}
+            className="btn-primary px-6 py-2 rounded-lg"
+            style={{
+              backgroundColor: 'var(--color-primary)',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            Load More ({totalCount - visibleCount} remaining)
+          </button>
+        </div>
+      )}
+    </>
+  );
+});
+
+// Add display name for debugging
+AssetGrid.displayName = 'AssetGrid';
+
 export default function AssetsView() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<AssetHealthStatus | 'all'>('all');
@@ -49,18 +156,83 @@ export default function AssetsView() {
     pollInterval: 30000,
   });
 
+  // Debounce search term to improve performance
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  
+  // Memoize search term processing to avoid re-creating the lowercase version
+  const normalizedSearchTerm = useMemo(() => 
+    debouncedSearchTerm.toLowerCase().trim(), 
+    [debouncedSearchTerm]
+  );
+
+  // Process assets safely, even during loading/error states
+  const assets: Asset[] = useMemo(() => 
+    data?.assetsOrError?.nodes || [], 
+    [data]
+  );
+  
+  // Memoize expensive filtering operations
+  const filteredAssets = useMemo(() => {
+    return assets.filter(asset => {
+      const matchesSearch = normalizedSearchTerm === '' || 
+        asset.key.path.join('.').toLowerCase().includes(normalizedSearchTerm);
+      
+      if (!matchesSearch) return false;
+      
+      if (statusFilter === 'all') return true;
+      
+      const assetStatus = getAssetStatus(asset);
+      return assetStatus === statusFilter;
+    });
+  }, [assets, normalizedSearchTerm, statusFilter]);
+
+  // Memoize status counts for potential future use
+  const statusCounts = useMemo(() => {
+    const counts = { 
+      all: filteredAssets.length,
+      [AssetHealthStatus.FRESH]: 0,
+      [AssetHealthStatus.STALE]: 0,
+      [AssetHealthStatus.MISSING]: 0
+    };
+    
+    filteredAssets.forEach(asset => {
+      const status = getAssetStatus(asset);
+      counts[status]++;
+    });
+    
+    return counts;
+  }, [filteredAssets]);
+
+  // Add pagination state to main component to avoid conditional hooks
+  const [visibleCount, setVisibleCount] = useState(12);
+  
+  // Memoized event handlers to prevent unnecessary re-renders
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  }, []);
+
+  const handleStatusFilterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setStatusFilter(e.target.value as AssetHealthStatus | 'all');
+  }, []);
+
+  const handleLoadMore = useCallback(() => {
+    setVisibleCount(prev => prev + 12);
+  }, []);
+
+  // Memoize visible assets
+  const visibleAssets = useMemo(() => 
+    filteredAssets.slice(0, Math.min(visibleCount, filteredAssets.length)), 
+    [filteredAssets, visibleCount]
+  );
+
+  // Effect to reset pagination when filters change
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [normalizedSearchTerm, statusFilter]);
+
+  // Handle loading and error states after all hooks are called
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorMessage error={error} />;
-
-  const assets: Asset[] = data?.assetsOrError?.nodes || [];
-  
-  // Filter assets based on search and status
-  const filteredAssets = assets.filter(asset => {
-    const matchesSearch = asset.key.path.join('.').toLowerCase().includes(searchTerm.toLowerCase());
-    const assetStatus = getAssetStatus(asset);
-    const matchesStatus = statusFilter === 'all' || assetStatus === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
 
   return (
     <div className="space-y-6">
@@ -81,7 +253,7 @@ export default function AssetsView() {
               className="input-field block w-full pl-10 pr-3 py-2 leading-5"
               placeholder="Search assets..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
             />
           </div>
         </div>
@@ -90,90 +262,42 @@ export default function AssetsView() {
           <select
             className="input-field block w-full py-2 px-3"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as AssetHealthStatus | 'all')}
+            onChange={handleStatusFilterChange}
           >
-            <option value="all">All Status</option>
-            <option value={AssetHealthStatus.FRESH}>Fresh</option>
-            <option value={AssetHealthStatus.STALE}>Stale</option>
-            <option value={AssetHealthStatus.MISSING}>Missing</option>
+            <option value="all">All Status ({statusCounts.all})</option>
+            <option value={AssetHealthStatus.FRESH}>Fresh ({statusCounts[AssetHealthStatus.FRESH]})</option>
+            <option value={AssetHealthStatus.STALE}>Stale ({statusCounts[AssetHealthStatus.STALE]})</option>
+            <option value={AssetHealthStatus.MISSING}>Missing ({statusCounts[AssetHealthStatus.MISSING]})</option>
           </select>
         </div>
       </div>
 
-      {/* Assets Grid */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-        {filteredAssets.map((asset) => {
-          const lastMaterialization = asset.assetMaterializations?.[0];
-          
-          const handleAssetClick = () => {
-            const assetUrl = getAssetUrl(asset.key.path);
-            window.open(assetUrl, '_blank');
-          };
-          
-          return (
-            <div
-              key={asset.id}
-              onClick={handleAssetClick}
-              className="card transition-all duration-200 cursor-pointer hover:shadow-lg"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-medium truncate" style={{ color: 'var(--color-text-default)' }}>
-                    {asset.key.path.join('.')}
-                  </h3>
-                  {asset.definition?.description && (
-                    <p className="mt-1 text-sm line-clamp-2" style={{ color: 'var(--color-text-lighter)' }}>
-                      {asset.definition.description}
-                    </p>
-                  )}
-                </div>
-                
-                <div className="ml-4 flex-shrink-0">
-                  {(() => {
-                    const status = getAssetStatus(asset);
-                    return (
-                      <span className={getStatusBadgeClass(status)}>
-                        {status}
-                      </span>
-                    );
-                  })()}
-                </div>
-              </div>
-              
-              <div className="mt-4 flex items-center justify-between text-sm" style={{ color: 'var(--color-text-lighter)' }}>
-                <div>
-                  {asset.definition?.groupName && (
-                    <span 
-                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                      style={{ 
-                        backgroundColor: 'var(--color-background-lighter)', 
-                        color: 'var(--color-text-light)',
-                        border: '1px solid var(--color-border-default)'
-                      }}
-                    >
-                      {asset.definition.groupName}
-                    </span>
-                  )}
-                </div>
-                
-                <div>
-                  {lastMaterialization ? (
-                    <span>Last: {new Date(parseFloat(lastMaterialization.timestamp)).toLocaleDateString()}</span>
-                  ) : (
-                    <span>Never materialized</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      
-      {filteredAssets.length === 0 && (
+      {/* Assets Grid with Lazy Loading */}
+      {filteredAssets.length > 0 ? (
+        <LazyChart fallbackMessage="Loading assets..." height={200}>
+          <AssetGrid 
+            assets={visibleAssets} 
+            onLoadMore={handleLoadMore}
+            visibleCount={visibleCount}
+            totalCount={filteredAssets.length}
+          />
+        </LazyChart>
+      ) : (
         <div className="text-center py-12">
-          <p style={{ color: 'var(--color-text-lighter)' }}>No assets match your current filters.</p>
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-gray-100 mb-4">
+            <MagnifyingGlassIcon className="h-6 w-6 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-medium text-color-text-default mb-2">No assets found</h3>
+          <p style={{ color: 'var(--color-text-lighter)' }}>
+            {searchTerm || statusFilter !== 'all' 
+              ? 'Try adjusting your search terms or filters.' 
+              : 'No assets are available in this workspace.'}
+          </p>
         </div>
       )}
+      
+      {/* Development Performance Monitoring */}
+      <PerformanceStats componentName="AssetsView" />
     </div>
   );
 }

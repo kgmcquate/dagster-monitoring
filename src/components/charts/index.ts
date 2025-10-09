@@ -1,10 +1,5 @@
-export { default as AssetHealthChart } from './AssetHealthChart';
-export { default as SuccessFailureTrendsChart } from './SuccessFailureTrendsChart';
-export { default as ObservationsActivityChart } from './ObservationsActivityChart';
-export { default as PerformanceMetricsChart } from './PerformanceMetricsChart';
-export { JobRunsChart } from './JobRunsChart';
-export { JobPerformanceMetrics } from './JobPerformanceMetrics';
+// Note: Main dashboard chart components are lazy-loaded directly in Dashboard.tsx
+// Only export components that are used elsewhere without lazy loading
 export { default as CodeLocationDistributionChart } from './CodeLocationDistributionChart';
 export { default as RecentMaterializationsChart } from './RecentMaterializationsChart';
 export { ChartGroupingToggle } from './ChartGroupingToggle';
-export { default as AssetChecksChart } from './AssetChecksChart';
