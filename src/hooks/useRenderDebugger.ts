@@ -36,20 +36,11 @@ export const useRenderDebugger = (componentName: string, props: any = {}) => {
       renderInfo.current.reasons.push(`Props changed: ${changedProps.join(', ')}`);
     }
 
-    // Log excessive renders
-    if (renderInfo.current.count > 20 && renderInfo.current.count % 10 === 0) {
-      console.warn(
-        `🔄 ${componentName} has rendered ${renderInfo.current.count} times`,
-        `Recent reasons:`, renderInfo.current.reasons.slice(-5)
-      );
-    }
-
-    // Detect infinite loops
+    // Only log critical infinite loops in development
     if (renderInfo.current.count > 100) {
       console.error(
         `🚨 INFINITE RENDER LOOP DETECTED in ${componentName}!`,
-        `Render count: ${renderInfo.current.count}`,
-        `Recent reasons:`, renderInfo.current.reasons.slice(-10)
+        `Render count: ${renderInfo.current.count}`
       );
     }
 

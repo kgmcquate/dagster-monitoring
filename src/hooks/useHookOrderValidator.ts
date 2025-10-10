@@ -30,16 +30,10 @@ export const useHookOrderValidator = (componentName: string) => {
         const currentOrder = hookCallsRef.current.map(call => call.name);
         const expectedOrder = expectedOrderRef.current;
 
-        if (currentOrder.length !== expectedOrder.length) {
-          console.warn(
-            `🚨 Hook Order Violation in ${componentName}:`,
-            `Expected ${expectedOrder.length} hooks, got ${currentOrder.length}`
-          );
-        }
-
+        // Only log critical hook order violations
         for (let i = 0; i < Math.min(currentOrder.length, expectedOrder.length); i++) {
           if (currentOrder[i] !== expectedOrder[i]) {
-            console.warn(
+            console.error(
               `🚨 Hook Order Violation in ${componentName}:`,
               `Position ${i + 1}: Expected ${expectedOrder[i]}, got ${currentOrder[i]}`
             );
@@ -68,13 +62,10 @@ export const useHookOrderValidator = (componentName: string) => {
  */
 export const withHookTracking = <T extends any[], R>(
   hook: (...args: T) => R,
-  hookName: string,
-  componentName: string
+  _hookName: string,
+  _componentName: string
 ) => {
   return (...args: T): R => {
-    if (process.env.NODE_ENV === 'development') {
-      console.debug(`📎 ${componentName}: Calling ${hookName}`);
-    }
     return hook(...args);
   };
 };

@@ -33,39 +33,26 @@ export default function ChecksView() {
 
   // Extract real asset checks from assets
   const allAssetChecks = useMemo(() => {
-    console.log('Asset checks query data:', data);
-
     if (!data?.assetNodes) {
-      console.log('No assetNodes found in data');
       return [];
     }
-
-    console.log('Found assetNodes:', data.assetNodes.length);
 
     const checks: (AssetCheck & { assetPath: string })[] = [];
 
     // Extract asset checks from each asset node
-    data.assetNodes.forEach((assetNode: any, index: number) => {
-      console.log(`Asset node ${index}:`, assetNode);
+    data.assetNodes.forEach((assetNode: any) => {
       if (assetNode.assetChecksOrError?.checks) {
-        console.log(`Found ${assetNode.assetChecksOrError.checks.length} checks for asset node ${index}`);
         assetNode.assetChecksOrError.checks.forEach((check: AssetCheck) => {
           // Extract asset path from the check's assetKey
           const assetPath = check.assetKey?.path?.join('/') || 'Unknown Asset';
-          console.log('Processing check:', check.name, 'for asset:', assetPath);
 
           checks.push({
             ...check,
             assetPath: assetPath
           });
         });
-      } else {
-        console.log(`No checks found for asset node ${index}:`, assetNode.assetChecksOrError);
       }
     });
-
-    console.log('Total asset checks found:', checks.length);
-    console.log('All checks:', checks);
 
     return checks;
   }, [data]);

@@ -7,7 +7,7 @@ interface PerformanceMetrics {
   totalRenderTimes: number[];
 }
 
-export const usePerformanceMonitor = (componentName: string) => {
+export const usePerformanceMonitor = (_componentName: string) => {
   const renderCountRef = useRef(0);
   const renderTimesRef = useRef<number[]>([]);
   const startTimeRef = useRef<number>(0);
@@ -19,10 +19,6 @@ export const usePerformanceMonitor = (componentName: string) => {
   if (startTimeRef.current > 0) {
     const renderTime = currentTime - startTimeRef.current;
     renderTimesRef.current = [...renderTimesRef.current, renderTime].slice(-10);
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`${componentName} render time: ${renderTime.toFixed(2)}ms`);
-    }
   }
   
   // Update refs

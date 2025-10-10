@@ -144,13 +144,6 @@ export default function Dashboard() {
     return <ErrorMessage error={error} />;
   }
 
-  // Add safety checks for data structure
-  console.log('Dashboard data:', data);
-  console.log('Dashboard data loaded:', {
-    assets: allAssets.length,
-    jobRuns: allJobRuns.length
-  });
-
   return (
     <div className="space-y-8">
       <div>
